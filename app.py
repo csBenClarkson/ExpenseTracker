@@ -1,6 +1,7 @@
 from flask import (Flask, render_template, request, redirect,
                    url_for, session, jsonify, g)
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.middleware.proxy_fix import ProxyFix
 from functools import wraps
 from database import init_db, get_db
 import config
@@ -11,6 +12,11 @@ from datetime import datetime, timedelta
 app = Flask(__name__)
 app.secret_key = config.SECRET_KEY
 app.config['DATABASE'] = config.DATABASE
+
+# Configure ProxyFix to trust X-Forwarded-* headers from relay
+app.wsgi_app = ProxyFix(
+    app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1
+)
 
 # Initialize database
 init_db(app)
