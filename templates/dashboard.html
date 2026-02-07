@@ -1,0 +1,469 @@
+{% extends "base.html" %}
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div id="app" class="flex h-screen overflow-hidden">
+
+    <!-- ─── Sidebar ─────────────────────────────────────────────────────── -->
+    <aside id="sidebar" class="sidebar w-64 flex flex-col shrink-0 z-30">
+        <!-- Logo -->
+        <div class="p-5 border-b border-white/10">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                    <i class="fas fa-wallet text-white"></i>
+                </div>
+                <span class="text-lg font-bold text-[var(--text-primary)] tracking-tight">ExpenseTracker</span>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="flex-1 p-3 space-y-1 overflow-y-auto" aria-label="Main navigation">
+            <a data-view="board" class="nav-link active" aria-label="Dashboard">
+                <i class="fas fa-th-large w-5" aria-hidden="true"></i> <span>Dashboard</span>
+            </a>
+            <a data-view="expenses" class="nav-link" aria-label="Expenses">
+                <i class="fas fa-receipt w-5" aria-hidden="true"></i> <span>Expenses</span>
+            </a>
+            <a data-view="calendar" class="nav-link" aria-label="Calendar">
+                <i class="fas fa-calendar-alt w-5" aria-hidden="true"></i> <span>Calendar</span>
+            </a>
+            <a data-view="statistics" class="nav-link" aria-label="Statistics">
+                <i class="fas fa-chart-bar w-5" aria-hidden="true"></i> <span>Statistics</span>
+            </a>
+            <div class="pt-3 mt-3 border-t border-white/10">
+                <a data-view="settings" class="nav-link" aria-label="Settings">
+                    <i class="fas fa-cog w-5" aria-hidden="true"></i> <span>Settings</span>
+                </a>
+            </div>
+        </nav>
+
+        <!-- User Info -->
+        <div class="p-4 border-t border-white/10">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center text-white text-sm font-bold">
+                    {{ username[0]|upper if username else 'U' }}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="text-sm font-medium text-[var(--text-primary)] truncate">{{ username }}</div>
+                </div>
+                <a href="/logout" class="text-[var(--text-secondary)] hover:text-red-400 transition tooltip-container" aria-label="Logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                </a>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Mobile sidebar toggle -->
+    <button id="sidebar-toggle" class="fixed top-4 left-4 z-40 lg:hidden glass-card p-2 rounded-xl text-[var(--text-primary)]" data-tooltip="Toggle sidebar" data-tooltip-pos="right">
+        <i class="fas fa-bars text-lg"></i>
+    </button>
+
+    <!-- ─── Main Content ────────────────────────────────────────────────── -->
+    <main class="flex-1 flex flex-col overflow-hidden" id="main-content">
+
+        <!-- Top Bar -->
+        <header class="top-bar flex items-center justify-between px-6 py-4 shrink-0">
+            <div class="flex items-center gap-4">
+                <h1 id="view-title" class="text-2xl font-bold text-[var(--text-primary)]">Dashboard</h1>
+                <span id="view-subtitle" class="text-sm text-[var(--text-secondary)] hidden md:inline"></span>
+            </div>
+            <div class="flex items-center gap-3">
+                <!-- Currency Update Info -->
+                <div class="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+                    <i class="fas fa-info-circle"></i>
+                    <span id="currency-update-time" title="Last update">Loading...</span>
+                    <button id="currency-update-btn" class="ml-1 px-2 py-1 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/10 transition" data-tooltip="Manually refresh currency rates" data-tooltip-pos="bottom">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+                <!-- Display Currency -->
+                <div class="flex items-center gap-2">
+                    <label class="text-xs text-[var(--text-secondary)]"><i class="fas fa-coins"></i></label>
+                    <select id="display-currency" class="glass-input px-3 py-1.5 rounded-lg text-sm text-[var(--text-primary)] bg-transparent">
+                        <option value="USD">USD $</option>
+                        <option value="EUR">EUR €</option>
+                        <option value="GBP">GBP £</option>
+                        <option value="JPY">JPY ¥</option>
+                        <option value="CNY">CNY ¥</option>
+                        <option value="CAD">CAD $</option>
+                        <option value="AUD">AUD $</option>
+                        <option value="CHF">CHF</option>
+                        <option value="KRW">KRW ₩</option>
+                        <option value="INR">INR ₹</option>
+                        <option value="SGD">SGD $</option>
+                        <option value="HKD">HKD $</option>
+                        <option value="TWD">TWD $</option>
+                        <option value="MXN">MXN $</option>
+                        <option value="BRL">BRL R$</option>
+                    </select>
+                </div>
+                <!-- Theme Switcher -->
+                <div class="relative">
+                    <button id="theme-btn" class="glass-input px-3 py-1.5 rounded-lg text-sm text-[var(--text-primary)] flex items-center gap-2 hover:bg-white/10 transition cursor-pointer" data-tooltip="Switch theme" data-tooltip-pos="bottom">
+                        <i class="fas fa-palette"></i>
+                        <span class="hidden sm:inline" id="theme-label">Ocean</span>
+                        <i class="fas fa-chevron-down text-[10px] text-[var(--text-secondary)] ml-1 transition-transform duration-200" id="theme-arrow"></i>
+                    </button>
+                    <div id="theme-dropdown" class="absolute right-0 top-full mt-2 glass-card rounded-xl p-2 min-w-[260px] hidden z-50">
+                        <div class="px-3 py-2 text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">Dark Themes</div>
+                        <button data-theme="ocean" class="theme-option"><span class="theme-dot" style="background:linear-gradient(135deg,#0c1445,#0d9488)"></span> Ocean</button>
+                        <button data-theme="sunset" class="theme-option"><span class="theme-dot" style="background:linear-gradient(135deg,#7c2d12,#ec4899)"></span> Sunset</button>
+                        <button data-theme="forest" class="theme-option"><span class="theme-dot" style="background:linear-gradient(135deg,#052e16,#059669)"></span> Forest</button>
+                        <button data-theme="lavender" class="theme-option"><span class="theme-dot" style="background:linear-gradient(135deg,#2e1065,#7c3aed)"></span> Lavender</button>
+                        <button data-theme="midnight" class="theme-option"><span class="theme-dot" style="background:linear-gradient(135deg,#020617,#1e3a5f)"></span> Midnight</button>
+                        <button data-theme="rose" class="theme-option"><span class="theme-dot" style="background:linear-gradient(135deg,#4c0519,#f43f5e)"></span> Rose</button>
+                        <button data-theme="aurora" class="theme-option"><span class="theme-dot" style="background:linear-gradient(135deg,#064e3b,#6d28d9)"></span> Aurora</button>
+                        <div class="px-3 py-2 text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider mt-2 border-t border-white/10">Light Themes</div>
+                        <button data-theme="light-neutral" class="theme-option"><span class="theme-dot" style="background:linear-gradient(135deg,#f8fafc,#e2e8f0)"></span> Neutral</button>
+                        <button data-theme="light-warm" class="theme-option"><span class="theme-dot" style="background:linear-gradient(135deg,#fef7f0,#fde68a)"></span> Warm</button>
+                        <button data-theme="light-cool" class="theme-option"><span class="theme-dot" style="background:linear-gradient(135deg,#f0f9ff,#cffafe)"></span> Cool</button>
+                        <button data-theme="light-green" class="theme-option"><span class="theme-dot" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7)"></span> Green</button>
+                        <button data-theme="light-purple" class="theme-option"><span class="theme-dot" style="background:linear-gradient(135deg,#faf5ff,#ede9fe)"></span> Purple</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- ─── View Container ──────────────────────────────────────────── -->
+        <div class="flex-1 overflow-y-auto px-6 pt-8 pb-8">
+
+            <!-- ── Board View ──────────────────────────────────────────── -->
+            <section id="view-board" class="view-section">
+                <!-- Summary Cards -->
+                <div id="board-summary" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8"></div>
+                <!-- Actions -->
+                <div class="flex flex-wrap gap-3 mb-8 items-center">
+                    <div class="relative flex-1 min-w-[200px] max-w-md">
+                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm"></i>
+                        <input id="board-search" type="text" placeholder="Search expenses..."
+                               class="glass-input w-full pl-10 pr-4 py-2.5 rounded-xl text-[var(--text-primary)] text-sm placeholder-[var(--text-secondary)] tooltip-container" data-tooltip="Search by title or description" data-tooltip-pos="bottom">
+                    </div>
+                    <select id="board-filter-cat" class="glass-input px-4 py-2.5 rounded-xl text-[var(--text-primary)] text-sm tooltip-container" data-tooltip="Filter by category" data-tooltip-pos="bottom">
+                        <option value="">All Categories</option>
+                    </select>
+                    <select id="board-sort" class="glass-input px-4 py-2.5 rounded-xl text-[var(--text-primary)] text-sm tooltip-container" data-tooltip="Sort expenses" data-tooltip-pos="bottom">
+                        <option value="date-desc">Newest First</option>
+                        <option value="date-asc">Oldest First</option>
+                        <option value="amount-desc">Highest Amount</option>
+                        <option value="amount-asc">Lowest Amount</option>
+                        <option value="title-asc">A → Z</option>
+                    </select>
+                    <button onclick="ET.Expenses.openAddModal()"
+                            class="btn-primary px-5 py-2.5 rounded-xl text-sm font-medium tooltip-container" data-tooltip="Add new expense" data-tooltip-pos="bottom">
+                        <i class="fas fa-plus mr-1"></i> Add Expense
+                    </button>
+                    <button onclick="ET.Consumption.openAddModal()"
+                            class="btn-primary px-4 py-2.5 rounded-xl text-sm tooltip-container" data-tooltip="Add new consumption item" data-tooltip-pos="bottom">
+                        <i class="fas fa-plus mr-1"></i> Add Consumption
+                    </button>
+                </div>
+                <!-- Cards Grid -->
+                <div id="board-grid" class="grid gap-5 transition-all duration-300"></div>
+                <div id="board-empty" class="hidden text-center py-16">
+                    <i class="fas fa-receipt text-5xl text-gray-600 mb-4"></i>
+                    <p class="text-[var(--text-secondary)] text-lg">No expenses yet. Add your first one!</p>
+                </div>
+            </section>
+
+            <!-- ── Expenses View (Table) ───────────────────────────────── -->
+            <section id="view-expenses" class="view-section hidden">
+                <div class="flex flex-wrap gap-3 mb-6 items-center justify-between">
+                    <div class="flex flex-wrap gap-3 items-center">
+                        <div class="flex glass-card rounded-xl overflow-hidden">
+                            <button id="exp-view-expenses" class="px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] transition exp-view-btn active" data-exp-view="expenses" data-tooltip="List view" data-tooltip-pos="bottom">Expenses</button>
+                            <button id="exp-view-consumption" class="px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] transition exp-view-btn" data-exp-view="consumption" data-tooltip="Consumption items" data-tooltip-pos="bottom">Consumption</button>
+                            <button id="exp-view-all" class="px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] transition exp-view-btn" data-exp-view="all" data-tooltip="All items" data-tooltip-pos="bottom">All</button>
+                        </div>
+                        <select id="exp-filter-interval" class="glass-input px-4 py-2.5 rounded-xl text-[var(--text-primary)] text-sm tooltip-container" data-tooltip="Filter by billing interval" data-tooltip-pos="bottom">
+                            <option value="">All Intervals</option>
+                            <option value="once">One-time</option>
+                            <option value="daily">Daily</option>
+                            <option value="weekdays">Weekdays (Mon-Fri)</option>
+                            <option value="weekends">Weekends (Sat-Sun)</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="biweekly">Biweekly</option>
+                            <option value="monthly">Monthly</option>
+                            <option value="quarterly">Quarterly</option>
+                            <option value="yearly">Yearly</option>
+                            <option value="custom">Custom</option>
+                        </select>
+                        <select id="exp-filter-category" class="glass-input px-4 py-2.5 rounded-xl text-[var(--text-primary)] text-sm tooltip-container" data-tooltip="Filter by category" data-tooltip-pos="bottom">
+                            <option value="">All Categories</option>
+                        </select>
+                        <select id="exp-filter-payment" class="glass-input px-4 py-2.5 rounded-xl text-[var(--text-primary)] text-sm tooltip-container" data-tooltip="Filter by payment method" data-tooltip-pos="bottom">
+                            <option value="">All Payment Methods</option>
+                        </select>
+                        <label class="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+                            <input type="checkbox" id="exp-active-only" checked class="accent-cyan-500"> Active only
+                        </label>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="ET.Expenses.openAddModal()"
+                                class="btn-primary px-5 py-2.5 rounded-xl text-sm font-medium tooltip-container" data-tooltip="Add new recurring expense" data-tooltip-pos="bottom">
+                            <i class="fas fa-plus mr-1"></i> Add Expense
+                        </button>
+                        <button onclick="ET.Consumption.openAddModal()"
+                                class="btn-primary px-4 py-2.5 rounded-xl text-sm tooltip-container" data-tooltip="Add depletable item" data-tooltip-pos="bottom">
+                            <i class="fas fa-plus mr-1"></i> Add Consumption
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Expenses Table -->
+                <div id="expenses-table-section" class="glass-card rounded-2xl overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b border-white/10 text-[var(--text-secondary)]">
+                                    <th class="text-left px-4 py-3 font-medium">Title</th>
+                                    <th class="text-left px-4 py-3 font-medium">Amount</th>
+                                    <th class="text-left px-4 py-3 font-medium hidden md:table-cell">Category</th>
+                                    <th class="text-left px-4 py-3 font-medium hidden md:table-cell">Payment</th>
+                                    <th class="text-left px-4 py-3 font-medium">Date</th>
+                                    <th class="text-left px-4 py-3 font-medium hidden sm:table-cell">Interval</th>
+                                    <th class="text-right px-4 py-3 font-medium">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="expenses-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Consumption Section (combined) -->
+                <div id="consumption-section" class="mt-6">
+                    <div class="flex flex-wrap gap-3 mb-4 items-center justify-between">
+                        <p class="text-[var(--text-secondary)] text-sm">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Track consumable items. Set usage rate to auto-calculate replacement costs.
+                        </p>
+                    </div>
+                    <div id="consumption-grid" class="grid gap-4"></div>
+                    <div id="consumption-empty" class="hidden text-center py-16">
+                        <i class="fas fa-shopping-basket text-5xl text-gray-600 mb-4"></i>
+                        <p class="text-[var(--text-secondary)] text-lg">No consumable items tracked yet.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ── Calendar View ───────────────────────────────────────── -->
+            <section id="view-calendar" class="view-section hidden">
+                <!-- Calendar Header -->
+                <div class="flex flex-wrap items-center justify-between mb-6 gap-4">
+                    <div class="flex items-center gap-2">
+                        <button onclick="ET.Calendar.prevMonth()" class="glass-card px-3 py-2 rounded-xl text-[var(--text-primary)] hover:bg-white/10 transition tooltip-container" data-tooltip="Previous month" data-tooltip-pos="bottom">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <button onclick="ET.Calendar.nextMonth()" class="glass-card px-3 py-2 rounded-xl text-[var(--text-primary)] hover:bg-white/10 transition tooltip-container" data-tooltip="Next month" data-tooltip-pos="bottom">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                        <button onclick="ET.Calendar.goToday()" class="glass-card px-4 py-2 rounded-xl text-[var(--text-primary)] hover:bg-white/10 transition text-sm font-medium tooltip-container" data-tooltip="Go to today" data-tooltip-pos="bottom">
+                            Today
+                        </button>
+                        <div class="flex items-center gap-2 ml-2">
+                            <input id="calendar-date-input" type="date" class="glass-input px-3 py-1.5 rounded-lg text-sm text-[var(--text-primary)]" />
+                            <select id="calendar-month-select" class="glass-input px-3 py-1.5 rounded-lg text-sm text-[var(--text-primary)]">
+                                <option value="1">Jan</option>
+                                <option value="2">Feb</option>
+                                <option value="3">Mar</option>
+                                <option value="4">Apr</option>
+                                <option value="5">May</option>
+                                <option value="6">Jun</option>
+                                <option value="7">Jul</option>
+                                <option value="8">Aug</option>
+                                <option value="9">Sep</option>
+                                <option value="10">Oct</option>
+                                <option value="11">Nov</option>
+                                <option value="12">Dec</option>
+                            </select>
+                            <select id="calendar-year-select" class="glass-input px-3 py-1.5 rounded-lg text-sm text-[var(--text-primary)]"></select>
+                        </div>
+                        <h2 id="calendar-title" class="text-xl font-semibold text-[var(--text-primary)] ml-2"></h2>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <!-- Month Summary -->
+                        <div id="calendar-month-summary" class="text-sm text-[var(--text-secondary)]"></div>
+                        <!-- View Toggle -->
+                        <div class="flex glass-card rounded-xl overflow-hidden">
+                            <button onclick="ET.Calendar.setView('month')" id="cal-view-month" class="px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] transition cal-view-btn active" data-tooltip="Month view" data-tooltip-pos="bottom">Month</button>
+                            <button onclick="ET.Calendar.setView('week')" id="cal-view-week" class="px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] transition cal-view-btn">Week</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Calendar Grid -->
+                <div class="glass-card rounded-2xl overflow-hidden">
+                    <div class="grid grid-cols-7 text-center text-xs font-medium text-[var(--text-secondary)] border-b border-white/10">
+                        <div class="py-3">Sun</div><div class="py-3">Mon</div><div class="py-3">Tue</div>
+                        <div class="py-3">Wed</div><div class="py-3">Thu</div><div class="py-3">Fri</div><div class="py-3">Sat</div>
+                    </div>
+                    <div id="calendar-grid" class="grid grid-cols-7"></div>
+                </div>
+                <!-- Calendar Day Detail Slide Panel -->
+                <div id="calendar-detail" class="mt-5 glass-card rounded-2xl p-6 hidden">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 id="calendar-detail-title" class="text-lg font-semibold text-[var(--text-primary)]"></h3>
+                        <div class="flex items-center gap-2">
+                            <button onclick="ET.Calendar.addExpenseForDate()" class="btn-primary px-3 py-1.5 rounded-lg text-xs font-medium">
+                                <i class="fas fa-plus mr-1"></i> Add Expense
+                            </button>
+                            <button onclick="document.getElementById('calendar-detail').classList.add('hidden')" class="glass-card px-3 py-1.5 rounded-lg text-[var(--text-secondary)] hover:text-white transition text-sm">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="calendar-detail-items"></div>
+                </div>
+            </section>
+
+            <!-- ── Statistics View ─────────────────────────────────────── -->
+            <section id="view-statistics" class="view-section hidden">
+                <!-- Stats Summary Cards -->
+                <div id="stats-summary" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8"></div>
+                <!-- Charts Row -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <div class="glass-card rounded-2xl p-5">
+                        <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4"><i class="fas fa-chart-bar mr-2 text-[var(--accent)]"></i>Monthly Spending</h3>
+                        <div class="relative" style="height:280px">
+                            <canvas id="chart-monthly"></canvas>
+                        </div>
+                        <div id="chart-monthly-empty" class="hidden text-center py-10">
+                            <i class="fas fa-chart-bar text-3xl text-gray-600 mb-2"></i>
+                            <p class="text-sm text-[var(--text-secondary)]">No spending data yet</p>
+                        </div>
+                    </div>
+                    <div class="glass-card rounded-2xl p-5">
+                        <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4"><i class="fas fa-chart-pie mr-2 text-[var(--accent)]"></i>By Category</h3>
+                        <div class="relative" style="height:280px">
+                            <canvas id="chart-category"></canvas>
+                        </div>
+                        <div id="chart-category-empty" class="hidden text-center py-10">
+                            <i class="fas fa-chart-pie text-3xl text-gray-600 mb-2"></i>
+                            <p class="text-sm text-[var(--text-secondary)]">No category data yet</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="glass-card rounded-2xl p-5">
+                        <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4"><i class="fas fa-trophy mr-2 text-[var(--accent)]"></i>Top Expenses This Month</h3>
+                        <div id="stats-top-expenses"></div>
+                    </div>
+                    <div class="glass-card rounded-2xl p-5">
+                        <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4"><i class="fas fa-credit-card mr-2 text-[var(--accent)]"></i>By Payment Method</h3>
+                        <div id="stats-payment-breakdown"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ── Settings View ───────────────────────────────────────── -->
+            <section id="view-settings" class="view-section hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- General Settings -->
+                    <div class="glass-card rounded-2xl p-6">
+                        <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-5"><i class="fas fa-sliders-h mr-2 text-[var(--accent)]"></i>General</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm text-[var(--text-secondary)] mb-1">Display Currency</label>
+                                <select id="set-currency" class="glass-input w-full px-4 py-2.5 rounded-xl text-[var(--text-primary)] text-sm"></select>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-[var(--text-secondary)] mb-1">Currency API URL</label>
+                                <input id="set-api-url" type="text" class="glass-input w-full px-4 py-2.5 rounded-xl text-[var(--text-primary)] text-sm"
+                                       placeholder="https://api.exchangerate-api.com/v4/latest/">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-[var(--text-secondary)] mb-1">Grid Columns (Board)</label>
+                                <select id="set-grid-cols" class="glass-input w-full px-4 py-2.5 rounded-xl text-[var(--text-primary)] text-sm">
+                                    <option value="2">2 Columns</option>
+                                    <option value="3">3 Columns</option>
+                                    <option value="4">4 Columns</option>
+                                    <option value="5">5 Columns</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-[var(--text-secondary)] mb-1">Date Format</label>
+                                <select id="set-date-format" class="glass-input w-full px-4 py-2.5 rounded-xl text-[var(--text-primary)] text-sm">
+                                    <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                                    <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+                                    <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                                    <option value="DD.MM.YYYY">DD.MM.YYYY</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-[var(--text-secondary)] mb-1">Color Scheme</label>
+                                <div id="set-theme-grid" class="grid grid-cols-4 gap-2 mt-2"></div>
+                            </div>
+                            <button onclick="ET.Settings.save()" class="btn-primary w-full py-2.5 rounded-xl text-sm font-medium mt-2 tooltip-container" data-tooltip="Save all settings changes" data-tooltip-pos="bottom">
+                                <i class="fas fa-save mr-1"></i> Save Settings
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Categories -->
+                    <div class="space-y-6">
+                        <div class="glass-card rounded-2xl p-6">
+                            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4"><i class="fas fa-tags mr-2 text-[var(--accent)]"></i>Categories</h3>
+                            <div id="settings-categories" class="space-y-2 mb-4 max-h-60 overflow-y-auto"></div>
+                            <div class="flex gap-2">
+                                <input id="new-cat-name" type="text" placeholder="Category name" class="glass-input flex-1 px-3 py-2 rounded-lg text-[var(--text-primary)] text-sm">
+                                <button onclick="ET.IconUpload.openEmojiPicker('ET.Settings._setNewCategoryIcon')" class="glass-card px-3 py-2 rounded-lg text-[var(--text-primary)] hover:bg-white/10 transition tooltip-container" data-tooltip="Select emoji for category" data-tooltip-pos="top">
+                                    <span id="new-cat-icon-display">📁</span>
+                                </button>
+                                <input id="new-cat-icon-hidden" type="hidden" value="📁">
+                                <input id="new-cat-color" type="color" value="#6366f1" class="w-10 h-10 rounded-lg cursor-pointer bg-transparent tooltip-container" data-tooltip="Pick color" data-tooltip-pos="top">
+                                <button onclick="ET.Settings.addCategory()" class="btn-primary px-4 py-2 rounded-lg text-sm font-medium tooltip-container" data-tooltip="Add category" data-tooltip-pos="top">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="glass-card rounded-2xl p-6">
+                            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4"><i class="fas fa-credit-card mr-2 text-[var(--accent)]"></i>Payment Methods</h3>
+                            <div id="settings-payments" class="space-y-2 mb-4 max-h-60 overflow-y-auto"></div>
+                            <div class="flex gap-2">
+                                <input id="new-pm-name" type="text" placeholder="Payment method" class="glass-input flex-1 px-3 py-2 rounded-lg text-[var(--text-primary)] text-sm">
+                                <button onclick="ET.IconUpload.openEmojiPicker('ET.Settings._setNewPaymentIcon')" class="glass-card px-3 py-2 rounded-lg text-[var(--text-primary)] hover:bg-white/10 transition tooltip-container" data-tooltip="Select emoji for payment method" data-tooltip-pos="top">
+                                    <span id="new-pm-icon-display">💳</span>
+                                </button>
+                                <input id="new-pm-icon-hidden" type="hidden" value="💳">
+                                <button onclick="ET.Settings.addPaymentMethod()" class="btn-primary px-4 py-2 rounded-lg text-sm font-medium tooltip-container" data-tooltip="Add method" data-tooltip-pos="top">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div><!-- end view container -->
+    </main>
+</div>
+
+<!-- ─── Modal Overlay ───────────────────────────────────────────────────────── -->
+<div id="modal-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4" onclick="if(event.target===this)ET.App.closeModal()" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div id="modal-box" class="glass-card rounded-2xl w-full max-w-lg transform scale-95 opacity-0 transition-all duration-200 max-h-[90vh] flex flex-col">
+        <div class="flex items-center justify-between px-6 pt-5 pb-3">
+            <h3 id="modal-title" class="text-xl font-semibold text-white"></h3>
+            <button onclick="ET.App.closeModal()" class="text-gray-400 hover:text-white transition text-lg" aria-label="Close modal"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="modal-body" class="px-6 pb-6 overflow-y-auto"></div>
+    </div>
+</div>
+
+<!-- ─── Toast Container ─────────────────────────────────────────────────────── -->
+<div id="toast-container" class="fixed bottom-6 right-6 z-[60] space-y-2"></div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/utils.js"></script>
+<script src="/static/js/tooltip.js"></script>
+<script src="/static/js/iconUpload.js"></script>
+<script src="/static/js/expenses.js"></script>
+<script src="/static/js/consumption.js"></script>
+<script src="/static/js/calendar.js"></script>
+<script src="/static/js/statistics.js"></script>
+<script src="/static/js/settings.js"></script>
+<script src="/static/js/dropdown.js"></script>
+<script src="/static/js/app.js"></script>
+{% endblock %}
