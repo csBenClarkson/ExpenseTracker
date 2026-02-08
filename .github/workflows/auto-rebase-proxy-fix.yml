@@ -1,0 +1,59 @@
+name: Auto-rebase proxy_fix onto master
+
+# This workflow automatically rebases the proxy_fix branch onto master
+# whenever there are updates to the master branch, ensuring proxy_fix
+# stays up-to-date with the latest changes while retaining the proxy fix patch.
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  rebase:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Fetch all history for all branches to enable rebasing
+          fetch-depth: 0
+          # Use GitHub token for authentication
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: Fetch latest changes
+        run: |
+          git fetch origin master
+          git fetch origin proxy_fix
+      
+      - name: Rebase proxy_fix onto master
+        run: |
+          # Check out the proxy_fix branch
+          git checkout proxy_fix
+          
+          # Attempt to rebase onto master
+          if git rebase origin/master; then
+            echo "✅ Rebase successful"
+          else
+            echo "⚠️ Rebase failed - conflicts detected"
+            echo "Manual intervention required to resolve conflicts"
+            git rebase --abort
+            exit 1
+          fi
+      
+      - name: Push rebased proxy_fix branch
+        run: |
+          # Force push the rebased branch
+          git push origin proxy_fix --force-with-lease
+      
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::warning::Failed to rebase proxy_fix onto master. Manual intervention required."
+          echo "Please resolve conflicts manually and push the rebased proxy_fix branch."
