@@ -394,6 +394,20 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
+## 🤖 GitHub Actions
+
+### Auto-Rebase proxy_fix Branch
+
+This repository includes an automated workflow that keeps the `proxy_fix` branch up-to-date with `master`. The workflow:
+
+- **Triggers**: Automatically runs when commits are pushed to the `master` branch
+- **Action**: Rebases the `proxy_fix` branch onto the latest `master` changes
+- **Result**: The `proxy_fix` branch always includes the latest master updates while preserving the proxy middleware fixes
+
+The workflow handles rebase conflicts gracefully - if conflicts are detected, the workflow fails and requires manual intervention. This ensures the proxy fix patches are never lost due to automatic merging.
+
+**Workflow file**: [`.github/workflows/auto-rebase-proxy-fix.yml`](.github/workflows/auto-rebase-proxy-fix.yml)
+
 ## 🙏 Acknowledgments
 
 - [Flask](https://flask.palletsprojects.com/) - Web framework
