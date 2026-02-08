@@ -22,7 +22,7 @@ export SECRET_KEY="${SECRET_KEY:-$(python3 -c 'import secrets; print(secrets.tok
 if [ "$1" = "production" ]; then
     echo "Starting in production mode on port ${PORT:-5000}..."
     export FLASK_DEBUG=False
-    gunicorn -w 4 -b 0.0.0.0:${PORT:-5000} app:app
+    gunicorn -w 4 -b --config gunicorn.config.py 127.0.0.1:${PORT:-5000} app:app
 else
     echo "Starting in development mode on port 5000..."
     export FLASK_DEBUG=True
