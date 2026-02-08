@@ -51,8 +51,6 @@ jobs:
         run: |
           # Force push the rebased branch
           git push origin proxy_fix --force-with-lease
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Notify on failure
         if: failure()
