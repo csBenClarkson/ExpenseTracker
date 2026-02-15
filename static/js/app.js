@@ -4,7 +4,6 @@ window.ET = window.ET || {};
 ET.App = (function () {
     let _currentView = 'board';
     let _statsData = null;
-    let _expenseViewMode = 'expenses';
 
     /* ── Initialize ──────────────────────────────────────────────────── */
     async function init() {
@@ -42,7 +41,6 @@ ET.App = (function () {
         setupThemeSwitcher();
         setupCurrencySwitch();
         setupFilters();
-        setupExpenseViewToggle();
         setupSidebar();
 
         // Apply grid columns
@@ -116,8 +114,6 @@ ET.App = (function () {
                 break;
             case 'expenses':
                 ET.Expenses.renderTable();
-                await ensureConsumptionLoadedIfNeeded();
-                updateExpensesCombinedView(_expenseViewMode);
                 break;
             case 'calendar':
                 await ET.Calendar.load();
@@ -265,51 +261,6 @@ ET.App = (function () {
         }
     }
 
-    function setupExpenseViewToggle() {
-        document.querySelectorAll('.exp-view-btn').forEach(btn => {
-            btn.addEventListener('click', async () => {
-                _expenseViewMode = btn.dataset.expView;
-                updateExpenseViewButtons();
-                await ensureConsumptionLoadedIfNeeded();
-                updateExpensesCombinedView(_expenseViewMode);
-            });
-        });
-        updateExpenseViewButtons();
-    }
-
-    function updateExpenseViewButtons() {
-        document.querySelectorAll('.exp-view-btn').forEach(btn => {
-            const active = btn.dataset.expView === _expenseViewMode;
-            btn.classList.toggle('active', active);
-            btn.classList.toggle('text-white', active);
-            btn.classList.toggle('text-[var(--text-secondary)]', !active);
-        });
-    }
-
-    async function ensureConsumptionLoadedIfNeeded() {
-        if (_expenseViewMode === 'consumption' || _expenseViewMode === 'all') {
-            await ET.Consumption.load();
-            ET.Consumption.renderGrid();
-        }
-    }
-
-    function updateExpensesCombinedView(mode) {
-        const table = document.getElementById('expenses-table-section');
-        const consumption = document.getElementById('consumption-section');
-        if (!table || !consumption) return;
-
-        if (mode === 'expenses') {
-            table.classList.remove('hidden');
-            consumption.classList.add('hidden');
-        } else if (mode === 'consumption') {
-            table.classList.add('hidden');
-            consumption.classList.remove('hidden');
-        } else {
-            table.classList.remove('hidden');
-            consumption.classList.remove('hidden');
-        }
-    }
-
     /* ── Sidebar (Mobile) ────────────────────────────────────────────── */
     function setupSidebar() {
         const toggle = document.getElementById('sidebar-toggle');
@@ -328,7 +279,7 @@ ET.App = (function () {
         style.id = 'dynamic-grid';
         style.textContent = `
             @media (min-width: 1024px) {
-                #board-grid, #consumption-grid { grid-template-columns: repeat(${cols}, 1fr) !important; }
+                #board-grid { grid-template-columns: repeat(${cols}, 1fr) !important; }
             }
         `;
         const existing = document.getElementById('dynamic-grid');
@@ -339,7 +290,8 @@ ET.App = (function () {
     /* ── Modal ────────────────────────────────────────────────────────── */
     function openModal(title, bodyHtml) {
         document.getElementById('modal-title').textContent = title;
-        document.getElementById('modal-body').innerHTML = bodyHtml;
+        const body = document.getElementById('modal-body');
+        body.innerHTML = bodyHtml;
         const overlay = document.getElementById('modal-overlay');
         overlay.classList.remove('hidden');
         // Enhance any selects in the modal
@@ -349,6 +301,7 @@ ET.App = (function () {
     }
 
     function closeModal() {
+        ET.Dropdown.closeAll();
         const overlay = document.getElementById('modal-overlay');
         overlay.classList.remove('show');
         setTimeout(() => {

@@ -45,8 +45,9 @@ def migrate_db(db):
     
     if 'specific_days' not in expenses_cols:
         db.execute("ALTER TABLE expenses ADD COLUMN specific_days TEXT")
-    if 'specific_dates' not in expenses_cols:
-        db.execute("ALTER TABLE expenses ADD COLUMN specific_dates TEXT")
+
+    # Drop legacy consumption_items table if it exists
+    db.execute("DROP TABLE IF EXISTS consumption_items")
     
     # Create icon_uploads table if it doesn't exist
     db.execute("""
@@ -128,31 +129,12 @@ CREATE TABLE IF NOT EXISTS expenses (
     billing_interval TEXT DEFAULT 'once',
     custom_interval_days INTEGER DEFAULT 0,
     specific_days TEXT,
-    specific_dates TEXT,
     is_active INTEGER DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
     FOREIGN KEY (payment_method_id) REFERENCES payment_methods(id) ON DELETE SET NULL
-);
-
-CREATE TABLE IF NOT EXISTS consumption_items (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    name TEXT NOT NULL,
-    description TEXT DEFAULT '',
-    category_id INTEGER,
-    price REAL NOT NULL,
-    currency TEXT DEFAULT 'USD',
-    consuming_rate REAL DEFAULT 1.0,
-    current_level REAL DEFAULT 100.0,
-    last_updated DATE,
-    auto_repurchase INTEGER DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS icon_uploads (

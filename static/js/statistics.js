@@ -34,7 +34,7 @@ ET.Statistics = (function () {
                     </div>
                     <div>
                         <div class="text-xs text-[var(--text-secondary)]">This Month</div>
-                        <div class="amount-display text-xl text-white">${ET.Utils.formatMoney(stats.month_total || 0)}</div>
+                        <div class="amount-display text-xl text-[var(--text-primary)]">${ET.Utils.formatMoney(stats.month_total || 0)}</div>
                     </div>
                 </div>
             </div>
@@ -45,18 +45,18 @@ ET.Statistics = (function () {
                     </div>
                     <div>
                         <div class="text-xs text-[var(--text-secondary)]">Recurring Total</div>
-                        <div class="amount-display text-xl text-white">${ET.Utils.formatMoney(stats.recurring_total || 0)}</div>
+                        <div class="amount-display text-xl text-[var(--text-primary)]">${ET.Utils.formatMoney(stats.recurring_total || 0)}</div>
                     </div>
                 </div>
             </div>
             <div class="summary-card">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
-                        <i class="fas fa-shopping-basket text-amber-400"></i>
+                        <i class="fas fa-receipt text-amber-400"></i>
                     </div>
                     <div>
-                        <div class="text-xs text-[var(--text-secondary)]">Consumption/mo</div>
-                        <div class="amount-display text-xl text-white">${ET.Utils.formatMoney(stats.consumption_monthly || 0)}</div>
+                        <div class="text-xs text-[var(--text-secondary)]">Total Expenses</div>
+                        <div class="amount-display text-xl text-[var(--text-primary)]">${stats.total_count || 0}</div>
                     </div>
                 </div>
             </div>
@@ -67,7 +67,7 @@ ET.Statistics = (function () {
                     </div>
                     <div>
                         <div class="text-xs text-[var(--text-secondary)]">Avg Monthly</div>
-                        <div class="amount-display text-xl text-white">${ET.Utils.formatMoney(avgMonthly)}</div>
+                        <div class="amount-display text-xl text-[var(--text-primary)]">${ET.Utils.formatMoney(avgMonthly)}</div>
                     </div>
                 </div>
             </div>`;
@@ -227,8 +227,8 @@ ET.Statistics = (function () {
                 <span class="text-lg">${e.category_icon || '📌'}</span>
                 <div class="flex-1 min-w-0">
                     <div class="flex justify-between mb-1">
-                        <span class="text-sm text-white truncate">${escHtml(e.title)}</span>
-                        <span class="amount-display text-sm text-white ml-2">${ET.Utils.convertAndFormat(e.amount, e.currency)}</span>
+                        <span class="text-sm text-[var(--text-primary)] truncate">${escHtml(e.title)}</span>
+                        <span class="amount-display text-sm text-[var(--text-primary)] ml-2">${ET.Utils.convertAndFormat(e.amount, e.currency)}</span>
                     </div>
                     <div class="stat-bar">
                         <div class="stat-bar-fill" style="width:${(e.amount / maxAmount * 100).toFixed(1)}%;background:${e.category_color || 'var(--accent)'}"></div>
@@ -257,8 +257,8 @@ ET.Statistics = (function () {
                 <span class="text-lg">${p.icon || '💳'}</span>
                 <div class="flex-1">
                     <div class="flex justify-between mb-1">
-                        <span class="text-sm text-white">${p.name || 'Unknown'}</span>
-                        <span class="amount-display text-sm text-white">${ET.Utils.formatMoney(p.total)} <span class="text-xs text-[var(--text-secondary)]">(${pct.toFixed(0)}%)</span></span>
+                        <span class="text-sm text-[var(--text-primary)]">${p.name || 'Unknown'}</span>
+                        <span class="amount-display text-sm text-[var(--text-primary)]">${ET.Utils.formatMoney(p.total)} <span class="text-xs text-[var(--text-secondary)]">(${pct.toFixed(0)}%)</span></span>
                     </div>
                     <div class="stat-bar">
                         <div class="stat-bar-fill" style="width:${pct}%;background:${colors[i % colors.length]}"></div>

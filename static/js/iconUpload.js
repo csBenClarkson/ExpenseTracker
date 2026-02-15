@@ -188,7 +188,7 @@ ET.IconUpload = (function () {
 
         confirmBtn.onclick = () => {
             if (selectedFile && callback) {
-                const cb = window[callback] || eval(callback);
+                const cb = _resolveCallback(callback);
                 if (typeof cb === 'function') {
                     cb(selectedFile, 'upload');
                 }
@@ -221,17 +221,31 @@ ET.IconUpload = (function () {
     }
 
     /**
-     * Internal function for emoji selection
+     * Resolve a dot-separated callback path (e.g., 'ET.Settings._setNewCategoryIcon')
      */
-    window.ET = window.ET || {};
-    ET.IconUpload = ET.IconUpload || {};
-    ET.IconUpload._selectEmoji = function(emoji, callbackName) {
-        const callback = window[callbackName];
+    function _resolveCallback(callbackName) {
+        if (typeof callbackName === 'function') return callbackName;
+        if (typeof callbackName !== 'string') return null;
+        const parts = callbackName.split('.');
+        let obj = window;
+        for (const part of parts) {
+            obj = obj?.[part];
+            if (obj === undefined) return null;
+        }
+        return typeof obj === 'function' ? obj : null;
+    }
+
+    /**
+     * Internal function for emoji selection (called from inline onclick)
+     */
+    function _selectEmoji(emoji, callbackName) {
+        const callback = _resolveCallback(callbackName);
         if (typeof callback === 'function') {
             callback(emoji, 'emoji');
         }
-        document.querySelector('[class*="bg-black/50"]')?.remove();
-    };
+        const modal = document.getElementById('icon-picker-modal');
+        if (modal) modal.remove();
+    }
 
     /**
      * Validate icon for category/payment method
@@ -250,6 +264,7 @@ ET.IconUpload = (function () {
         renderIcon,
         openEmojiPicker,
         validateIcon,
+        _selectEmoji,
         MAX_FILE_SIZE,
         ALLOWED_TYPES
     };

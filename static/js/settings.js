@@ -218,10 +218,7 @@ ET.Settings = (function () {
         );
     }
 
-    // Callbacks for emoji picker
-    window.ET = window.ET || {};
-    ET.Settings = ET.Settings || {};
-    ET.Settings._setNewCategoryIcon = function(iconData, type) {
+    function _setNewCategoryIcon(iconData, type) {
         document.getElementById('new-cat-icon-hidden').value = iconData;
         document.getElementById('new-cat-icon-hidden').dataset.type = type;
         if (type === 'emoji') {
@@ -233,8 +230,9 @@ ET.Settings = (function () {
             document.getElementById('new-cat-icon-display').style.backgroundSize = 'cover';
             document.getElementById('new-cat-icon-display').style.backgroundPosition = 'center';
         }
-    };
-    ET.Settings._setNewPaymentIcon = function(iconData, type) {
+    }
+
+    function _setNewPaymentIcon(iconData, type) {
         document.getElementById('new-pm-icon-hidden').value = iconData;
         document.getElementById('new-pm-icon-hidden').dataset.type = type;
         if (type === 'emoji') {
@@ -246,12 +244,13 @@ ET.Settings = (function () {
             document.getElementById('new-pm-icon-display').style.backgroundSize = 'cover';
             document.getElementById('new-pm-icon-display').style.backgroundPosition = 'center';
         }
-    };
+    }
 
     return {
         load, renderForm, selectTheme, save,
         addCategory, deleteCategory,
         addPaymentMethod, deletePaymentMethod,
+        _setNewCategoryIcon, _setNewPaymentIcon,
         THEMES, THEME_GRADIENTS,
     };
 })();

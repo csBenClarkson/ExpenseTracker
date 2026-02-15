@@ -124,7 +124,7 @@ ET.Calendar = (function () {
         document.querySelectorAll('.cal-view-btn').forEach(btn => {
             const isActive = btn.id === `cal-view-${_viewMode}`;
             btn.classList.toggle('active', isActive);
-            btn.classList.toggle('text-white', isActive);
+            btn.classList.toggle('text-[var(--text-primary)]', isActive);
             btn.classList.toggle('text-[var(--text-secondary)]', !isActive);
         });
     }
@@ -156,7 +156,7 @@ ET.Calendar = (function () {
             <div class="flex items-center gap-4 text-xs flex-wrap">
                 <span class="flex items-center gap-1.5">
                     <i class="fas fa-coins text-[var(--accent)]"></i>
-                    <span class="amount-display text-white">${ET.Utils.formatMoney(totalAmount)}</span>
+                    <span class="amount-display text-[var(--text-primary)]">${ET.Utils.formatMoney(totalAmount)}</span>
                 </span>
                 <span class="text-[var(--text-secondary)]">${totalItems} expense${totalItems !== 1 ? 's' : ''} · ${activeDays} day${activeDays !== 1 ? 's' : ''}</span>
             </div>`;
@@ -305,7 +305,6 @@ ET.Calendar = (function () {
         let total = 0;
         let count = 0;
         let expenses = [];
-        let consumption = [];
 
         Object.keys(_calData).forEach(date => {
             if (date >= from && date <= to) {
@@ -340,16 +339,16 @@ ET.Calendar = (function () {
                     </div>
                     <div class="text-right">
                         <div class="text-xs text-[var(--text-secondary)]">Total</div>
-                        <div class="amount-display text-white text-base">${ET.Utils.formatMoney(total)}</div>
+                        <div class="amount-display text-[var(--text-primary)] text-base">${ET.Utils.formatMoney(total)}</div>
                     </div>
                 </div>
-                <div class="border-b border-white/10"></div>
+                <div class="border-b border-[var(--card-border)]"></div>
             </div>`;
 
         if (expenses.length > 0) {
             rangeHTML += `
                 <div class="mb-3">
-                    <button onclick="ET.Calendar._toggleRangeDetails()" id="range-toggle-btn" class="flex items-center gap-2 text-sm font-medium text-white hover:text-[var(--accent)] transition py-2">
+                    <button onclick="ET.Calendar._toggleRangeDetails()" id="range-toggle-btn" class="flex items-center gap-2 text-sm font-medium text-[var(--text-primary)] hover:text-[var(--accent)] transition py-2">
                         <i class="fas fa-chevron-right transition-transform" id="range-toggle-icon"></i>
                         <span>Detailed Breakdown</span>
                     </button>
@@ -362,12 +361,12 @@ ET.Calendar = (function () {
                                     ${it.category_icon || '📌'}
                                 </div>
                                 <div class="flex-1 min-w-0">
-                                    <div class="text-white truncate font-medium">${escHtml(it.title)}</div>
+                                    <div class="text-[var(--text-primary)] truncate font-medium">${escHtml(it.title)}</div>
                                     <div class="text-xs text-[var(--text-secondary)]">${ET.Utils.formatDate(it.date)} · ${it.category_name || 'Uncategorized'}</div>
                                 </div>
                             </div>
                             <div class="text-right flex-shrink-0">
-                                <div class="amount-display text-white text-sm">${ET.Utils.convertAndFormat(it.amount, it.currency)}</div>
+                                <div class="amount-display text-[var(--text-primary)] text-sm">${ET.Utils.convertAndFormat(it.amount, it.currency)}</div>
                                 <span class="badge badge-${it.billing_interval} text-xs">${ET.Utils.intervalLabel(it.billing_interval, it.custom_interval_days)}</span>
                             </div>
                         </div>
@@ -411,14 +410,14 @@ ET.Calendar = (function () {
         }
 
         // Header with day names and dates
-        let headerHtml = '<div class="calendar-week-row border-b border-white/10">';
+        let headerHtml = '<div class="calendar-week-row border-b border-[var(--card-border)]">';
         headerHtml += '<div class="calendar-week-time"></div>';
         const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
         weekDates.forEach((d, i) => {
             const isToday = d.toDateString() === today.toDateString();
-            headerHtml += `<div class="p-2 text-center border-r border-white/5">
+            headerHtml += `<div class="p-2 text-center border-r border-[var(--card-border)]">
                 <div class="text-xs text-[var(--text-secondary)]">${dayNames[i]}</div>
-                <div class="text-sm font-medium mt-0.5 ${isToday ? 'cal-today-num w-7 h-7 mx-auto' : 'text-white'}">${d.getDate()}</div>
+                <div class="text-sm font-medium mt-0.5 ${isToday ? 'cal-today-num w-7 h-7 mx-auto' : 'text-[var(--text-primary)]'}">${d.getDate()}</div>
             </div>`;
         });
         headerHtml += '</div>';
@@ -496,9 +495,9 @@ ET.Calendar = (function () {
             s + ET.Utils.convert(it.amount, it.currency, ET.Utils.displayCurrency), 0);
 
         itemsEl.innerHTML = `
-            <div class="flex items-center justify-between mb-4 pb-3 border-b border-white/10">
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-[var(--card-border)]">
                 <span class="text-sm text-[var(--text-secondary)]">${items.length} expense${items.length !== 1 ? 's' : ''}</span>
-                <span class="text-sm text-[var(--text-secondary)]">Total: <span class="amount-display text-white text-base">${ET.Utils.formatMoney(total)}</span></span>
+                <span class="text-sm text-[var(--text-secondary)]">Total: <span class="amount-display text-[var(--text-primary)] text-base">${ET.Utils.formatMoney(total)}</span></span>
             </div>
             <div class="space-y-2">
                 ${items.map(it => `
@@ -508,12 +507,12 @@ ET.Calendar = (function () {
                                 ${it.category_icon || '📌'}
                             </div>
                             <div>
-                                <div class="text-sm font-medium text-white">${escHtml(it.title)}</div>
+                                <div class="text-sm font-medium text-[var(--text-primary)]">${escHtml(it.title)}</div>
                                 <div class="text-xs text-[var(--text-secondary)]">${it.category_name || ''} ${it.payment_method_name ? '· ' + it.payment_method_name : ''}</div>
                             </div>
                         </div>
                         <div class="text-right">
-                            <div class="amount-display text-white text-sm">${ET.Utils.convertAndFormat(it.amount, it.currency)}</div>
+                            <div class="amount-display text-[var(--text-primary)] text-sm">${ET.Utils.convertAndFormat(it.amount, it.currency)}</div>
                             <span class="badge badge-${it.billing_interval}">${ET.Utils.intervalLabel(it.billing_interval)}</span>
                         </div>
                     </div>

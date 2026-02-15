@@ -1,88 +1,64 @@
-# ExpenseTracker — AI Agent Instructions
 
-## Architecture Overview
+# ExpenseTracker — AI Agent Coding Guide
 
-Single-file Flask backend (`app.py`) serving a SPA-like frontend. No build step — vanilla JS modules loaded via `<script>` tags from `static/js/`. All data lives in a single SQLite3 database (`expense_tracker.db`), auto-created on first run via `database.py` `SCHEMA`.
+## Architecture & Data Flow
 
-**Data flow:** Browser → Flask API (`/api/*` JSON endpoints) → SQLite3 → JSON responses → Frontend IIFE modules render DOM directly.
+- **Single-file Flask backend** (`app.py`) exposes all API endpoints and routes, serving a SPA frontend.
+- **Frontend**: Pure ES6+ JS modules (IIFE-on-`window.ET`), loaded via `<script>` tags from `static/js/`.
+- **Database**: All data in a single SQLite3 file (`expense_tracker.db`), schema in `database.py` (`SCHEMA`).
+- **Data flow**: Browser ⇄ Flask `/api/*` (JSON) ⇄ SQLite3 ⇄ JSON ⇄ JS modules render DOM directly.
+- **Domain**: **Expenses** with flexible recurring billing intervals. Expenses appear in board, calendar, and statistics views with multi-currency conversion.
 
-**Key domain concept:** Two distinct trackable types exist — **Expenses** (bills with recurring intervals) and **Consumption Items** (depletable goods like toothpaste with a daily `consuming_rate`). Both contribute to monthly cost totals and appear in calendar/statistics views.
+## Key Conventions & Patterns
 
-## Project Layout
+- **API endpoints**: Always use `@login_required`, user scoping (`WHERE user_id = ?`), JSON in/out, DB via `get_db()`, return `{'status': 'ok'}` for mutations, use `SELECT last_insert_rowid()` for new IDs.
+- **Frontend modules**: IIFE pattern on `window.ET`. Example:
+    ```js
+    window.ET = window.ET || {};
+    ET.Module = (function () {
+        // ...private state...
+        return { load, render, ... };
+    })();
+    ```
+- **Module communication**: Use `ET.Utils` for shared state (categories, paymentMethods, settings, displayCurrency). Use `ET.App.refreshCurrentView()` and `ET.App.openModal()` for view updates.
+- **Currency**: Amounts stored in original currency. All conversion is client-side via `ET.Utils.convert()` and `ET.Utils.convertAndFormat()`, using `/api/currency/rates` (with fallback rates if API fails).
+- **Themes**: CSS custom properties on `[data-theme="name"]` in `static/css/style.css`. Add new themes by updating CSS, `dashboard.html` theme dropdown, and `THEME_GRADIENTS` in `settings.js`.
+- **Database**: All user tables have `user_id INTEGER NOT NULL` with `ON DELETE CASCADE`. Booleans as `INTEGER` (0/1). Dates as `TEXT` (`YYYY-MM-DD`). Schema uses `CREATE TABLE IF NOT EXISTS` (migrations require manual `ALTER TABLE`).
+- **Billing intervals**: Supported: `once`, `daily`, `weekdays`, `weekends`, `specific_days`, `weekly`, `biweekly`, `monthly`, `bimonthly`, `quarterly`, `semiannually`, `yearly`, `custom` (with `custom_interval_days`). **Any new interval must be added in `app.py` (calendar logic), `expenses.js` (form + labels), `utils.js` (intervalLabel), and `style.css` (badge).**
 
-```
-app.py              — All Flask routes: auth, CRUD APIs, statistics, calendar data
-database.py         — get_db(), init_db(), SCHEMA string (6 tables, all per-user)
-config.py           — SECRET_KEY, DATABASE path from env vars
-static/css/style.css — 7 themes via CSS custom properties on [data-theme="..."]
-static/js/utils.js  — ET.Utils: API wrapper, currency conversion, formatMoney, toast
-static/js/app.js    — ET.App: view router, modal system, init bootstrap
-static/js/expenses.js    — ET.Expenses: CRUD, board cards, table rendering
-static/js/consumption.js — ET.Consumption: CRUD, progress bars, refill
-static/js/calendar.js    — ET.Calendar: monthly grid, recurring occurrence calc
-static/js/statistics.js  — ET.Statistics: Chart.js charts
-static/js/settings.js    — ET.Settings: user prefs, category/payment method CRUD
-templates/dashboard.html  — Main SPA shell (all 6 view sections in one page)
-```
+## Project Structure (Key Files)
 
-## Critical Patterns
+- `app.py`: All Flask routes, API, calendar/statistics logic
+- `database.py`: DB schema, migrations, `get_db()`
+- `static/js/expenses.js`: Expense CRUD, board/table rendering
+- `static/js/calendar.js`: Calendar grid, recurring logic
+- `static/js/utils.js`: API wrapper, currency, formatting
+- `static/js/settings.js`: User prefs, theme logic
+- `static/css/style.css`: All themes, glassmorphism, variables
+- `templates/dashboard.html`: SPA shell, all views, theme dropdown
 
-### Backend API Convention
-All API routes follow this exact pattern — **always replicate it** for new endpoints:
-- Protected with `@login_required` decorator (returns 401 JSON for API, redirects for pages)
-- User scoping: every query includes `WHERE user_id = ?` using `session['user_id']`
-- JSON in/out: `request.get_json()` → `jsonify({...})`
-- DB access via `get_db()` (request-scoped connection from Flask's `g`)
-- Return `{'status': 'ok'}` on mutations; use `SELECT last_insert_rowid()` for new IDs
+## Developer Workflows
 
-### Frontend Module System
-All JS uses the **IIFE-on-`window.ET` namespace** pattern — no imports/bundler:
-```javascript
-window.ET = window.ET || {};
-ET.ModuleName = (function () {
-    // private state
-    let _data = [];
-    // public API returned at bottom
-    return { load, render, ... };
-})();
-```
-Modules communicate through `ET.Utils` (shared state: categories, paymentMethods, settings, displayCurrency) and `ET.App.refreshCurrentView()` / `ET.App.openModal()`.
+- **Windows dev**: `.venv/Scripts/python.exe app.py`
+- **Linux dev**: `bash run.sh`
+- **Production**: `bash run.sh production` (uses gunicorn)
+- **DB reset**: Delete `expense_tracker.db` and restart app
+- **First run**: DB auto-creates, default categories/payment methods seeded
 
-### Currency Handling
-Amounts are **stored in their original currency** in the DB. Conversion happens **client-side only** using `ET.Utils.convert(amount, fromCurrency, toCurrency)` with rates fetched from `/api/currency/rates`. The backend provides fallback hardcoded rates when the external API is unreachable. When adding views or touching amounts, always use `ET.Utils.convertAndFormat()` to display in the user's chosen display currency.
+## Adding Features (Checklist)
 
-### Theming System
-Themes are CSS-only via `[data-theme="name"]` selectors defining `--bg-from`, `--bg-via`, `--bg-to`, `--surface`, `--card`, `--accent`, etc. (20 custom properties per theme). Adding a new theme requires: CSS vars block in `style.css`, a `<button data-theme="...">` in `dashboard.html` theme dropdown, and an entry in `settings.js` `THEME_GRADIENTS`.
+1. **DB changes**: Update `SCHEMA` in `database.py` (manual `ALTER TABLE` for existing DBs)
+2. **API**: Add route in `app.py` (use `@login_required`, user scoping)
+3. **Frontend**: New JS module in `static/js/`, IIFE-on-ET pattern, add `<script>` to `dashboard.html`
+4. **Views**: Add `<section id="..." class="view-section hidden">` in `dashboard.html`
+5. **Navigation**: Add `<a data-view="..." class="nav-link">` in sidebar
+6. **Router**: Add `case '...'` in `ET.App.showView()` in `app.js`
 
-### Database Schema Conventions
-- All user-owned tables have `user_id INTEGER NOT NULL` with `FOREIGN KEY → users(id) ON DELETE CASCADE`
-- Booleans stored as `INTEGER` (0/1) — e.g., `is_active`, `auto_repurchase`
-- Dates stored as `TEXT` in `YYYY-MM-DD` format
-- Schema uses `CREATE TABLE IF NOT EXISTS` — safe to re-run; migrations require manual `ALTER TABLE`
+## Examples & Integration Points
 
-### Billing Intervals
-Expenses support: `once`, `daily`, `weekly`, `biweekly`, `monthly`, `quarterly`, `yearly`, `custom` (with `custom_interval_days`). The calendar endpoint in `app.py` computes all occurrences for a given month — **any new interval type must be added both in the calendar route's occurrence logic and the frontend interval badges/labels**.
+- **Expense interval logic**: See `app.py` (calendar endpoint) and `expenses.js` (interval badges)
+- **Theme addition**: Update `style.css`, `dashboard.html`, and `settings.js`
+- **Currency fallback**: `/api/currency/rates` uses primary API → Fawazahmed0 CDN fallback → hardcoded rates
 
-## Running the App
-
-```bash
-# Development (Windows)
-.venv/Scripts/python.exe app.py
-
-# Development (Linux)
-bash run.sh
-
-# Production (Linux)
-bash run.sh production   # uses gunicorn -w 4
-```
-
-The DB file auto-creates on first run. Deleting `expense_tracker.db` resets all data. New users get seeded default categories (12) and payment methods (6) via `seed_defaults()`.
-
-## Adding a New Feature Checklist
-
-1. **DB changes** → Add to `SCHEMA` in `database.py` (existing DBs need manual `ALTER TABLE`)
-2. **API route** → Add in `app.py` following the `@login_required` + user-scoped pattern
-3. **JS module** → Create `static/js/newmodule.js` using the IIFE-on-ET pattern, add `<script>` tag in `dashboard.html`
-4. **View section** → Add `<section id="view-name" class="view-section hidden">` in `dashboard.html`
-5. **Navigation** → Add `<a data-view="name" class="nav-link">` in the sidebar nav
-6. **View router** → Add `case 'name':` in `ET.App.showView()` switch in `app.js`
+---
+For more, see [README.md](../../README.md) and in-file comments. When in doubt, follow the IIFE-on-ET pattern and user-scoped API conventions.

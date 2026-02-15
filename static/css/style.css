@@ -327,8 +327,8 @@ body {
 }
 
 .glass-input {
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--card);
+    border: 1px solid var(--card-border);
     backdrop-filter: blur(10px);
     transition: all 0.2s ease;
     color: var(--text-primary);
@@ -340,8 +340,8 @@ body {
 }
 
 .glass-input option {
-    background: #1e293b;
-    color: #e2e8f0;
+    background: var(--surface);
+    color: var(--text-primary);
 }
 
 .glass-input::placeholder {
@@ -367,8 +367,8 @@ select.glass-input {
 }
 
 select.glass-input:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.2);
+    background-color: var(--surface-hover);
+    border-color: var(--accent-glow);
 }
 
 select.glass-input:focus {
@@ -385,7 +385,13 @@ select.glass-input:focus {
 }
 
 .custom-dropdown.open {
-    z-index: 200;
+    /* Must be above .tooltip-container (z-index:1000) used by action buttons */
+    z-index: 3000;
+}
+
+/* In modals, keep dropdowns above all form controls/buttons */
+#modal-body .custom-dropdown.open {
+    z-index: 5000;
 }
 
 .custom-dropdown-trigger {
@@ -393,8 +399,8 @@ select.glass-input:focus {
     align-items: center;
     gap: 0.5rem;
     padding: 0.5rem 2.25rem 0.5rem 0.75rem;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--card);
+    border: 1px solid var(--card-border);
     border-radius: 0.75rem;
     color: var(--text-primary);
     font-size: 0.875rem;
@@ -424,8 +430,8 @@ select.glass-input:focus {
 }
 
 .custom-dropdown-trigger:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.2);
+    background: var(--card-hover);
+    border-color: var(--accent-glow);
 }
 
 .custom-dropdown-menu {
@@ -442,17 +448,21 @@ select.glass-input:focus {
     -webkit-backdrop-filter: blur(30px);
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255,255,255,0.05);
     opacity: 0;
-    transform: translateY(-8px) scale(0.98);
     pointer-events: none;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: opacity 0.18s ease;
     max-height: 280px;
     overflow-y: auto;
 }
 
 .custom-dropdown.open .custom-dropdown-menu {
     opacity: 1;
-    transform: translateY(0) scale(1);
     pointer-events: auto;
+}
+
+/* When opening upward (not enough space below) */
+.custom-dropdown.dropdown-up .custom-dropdown-menu {
+    top: auto;
+    bottom: calc(100% + 6px);
 }
 
 .custom-dropdown-item {
@@ -541,7 +551,7 @@ select.glass-input:focus {
 }
 
 .exp-view-btn:hover:not(.active) {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--surface-hover);
 }
 
 
@@ -570,14 +580,14 @@ select.glass-input:focus {
 }
 
 .nav-link:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--surface-hover);
     color: var(--text-primary);
 }
 
 .nav-link.active {
     background: var(--accent-glow);
     color: var(--accent);
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05);
+    box-shadow: inset 0 0 0 1px var(--card-border);
 }
 
 
@@ -678,10 +688,10 @@ select.glass-input:focus {
 }
 
 
-/* ─── Consumption Progress Bars ──────────────────────────────────────────── */
+/* ─── Progress Bars ──────────────────────────────────────────────────────── */
 
 .progress-track {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--card-border);
     border-radius: 9999px;
     height: 0.5rem;
     overflow: hidden;
@@ -710,8 +720,8 @@ select.glass-input:focus {
 }
 
 .calendar-day:hover {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.15);
+    background: var(--card-hover);
+    border-color: var(--accent-glow);
 }
 
 .calendar-day.today {
@@ -725,13 +735,13 @@ select.glass-input:focus {
 
 .calendar-day.selected {
     border-color: var(--accent);
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--accent-glow);
     box-shadow: inset 0 0 0 1px var(--accent-glow);
 }
 
 .calendar-day.range-in {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.2);
+    background: var(--card-hover);
+    border-color: var(--accent-glow);
 }
 
 .calendar-day.range-start,
@@ -778,7 +788,7 @@ select.glass-input:focus {
 .cal-event {
     padding: 1px 4px;
     border-radius: 3px;
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--card-hover);
     overflow: hidden;
 }
 
@@ -819,7 +829,7 @@ select.glass-input:focus {
 }
 
 .cal-view-btn:hover:not(.active) {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--surface-hover);
 }
 
 /* Week View */
@@ -847,7 +857,7 @@ select.glass-input:focus {
 }
 
 .calendar-week-cell:hover {
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--card-hover);
 }
 
 .calendar-week-event {
@@ -1037,7 +1047,7 @@ select.glass-input:focus {
 /* ─── Modal ──────────────────────────────────────────────────────────────── */
 
 #modal-overlay.show {
-    display: flex !important;
+    display: block !important;
 }
 
 #modal-overlay.show #modal-box {
@@ -1127,11 +1137,12 @@ select.glass-input:focus {
 .badge-weekdays { background: rgba(59,130,246,0.2);   color: #60a5fa; }
 .badge-weekends { background: rgba(168,85,247,0.2);   color: #d8b4fe; }
 .badge-specific_days  { background: rgba(99,102,241,0.2);   color: #818cf8; }
-.badge-specific_dates { background: rgba(236,72,153,0.2);   color: #f472b6; }
 .badge-weekly   { background: rgba(249,115,22,0.2);   color: #fb923c; }
 .badge-biweekly { background: rgba(234,179,8,0.2);    color: #facc15; }
 .badge-monthly  { background: rgba(59,130,246,0.2);   color: #60a5fa; }
+.badge-bimonthly { background: rgba(6,182,212,0.2);   color: #22d3ee; }
 .badge-quarterly{ background: rgba(139,92,246,0.2);    color: #a78bfa; }
+.badge-semiannually { background: rgba(236,72,153,0.2); color: #f472b6; }
 .badge-yearly   { background: rgba(16,185,129,0.2);    color: #34d399; }
 .badge-custom   { background: rgba(236,72,153,0.2);    color: #f472b6; }
 

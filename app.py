@@ -149,14 +149,14 @@ def create_expense():
     db.execute('''
         INSERT INTO expenses
         (user_id, title, description, amount, currency, category_id, payment_method_id,
-         billing_date, billing_interval, custom_interval_days, specific_days, specific_dates, is_active)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+         billing_date, billing_interval, custom_interval_days, specific_days, is_active)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
     ''', (session['user_id'], d['title'], d.get('description', ''),
           float(d['amount']), d.get('currency', 'USD'),
           d.get('category_id'), d.get('payment_method_id'),
           d['billing_date'], d.get('billing_interval', 'once'),
           int(d.get('custom_interval_days', 0)),
-          d.get('specific_days'), d.get('specific_dates'),
+          d.get('specific_days'),
           int(d.get('is_active', 1))))
     db.commit()
     eid = db.execute('SELECT last_insert_rowid()').fetchone()[0]
@@ -171,14 +171,14 @@ def update_expense(eid):
     db.execute('''
         UPDATE expenses SET title=?, description=?, amount=?, currency=?, category_id=?,
         payment_method_id=?, billing_date=?, billing_interval=?, custom_interval_days=?,
-        specific_days=?, specific_dates=?, is_active=?, updated_at=CURRENT_TIMESTAMP 
+        specific_days=?, is_active=?, updated_at=CURRENT_TIMESTAMP 
         WHERE id=? AND user_id=?
     ''', (d['title'], d.get('description', ''), float(d['amount']),
           d.get('currency', 'USD'), d.get('category_id'),
           d.get('payment_method_id'), d['billing_date'],
           d.get('billing_interval', 'once'),
           int(d.get('custom_interval_days', 0)),
-          d.get('specific_days'), d.get('specific_dates'),
+          d.get('specific_days'),
           int(d.get('is_active', 1)), eid, session['user_id']))
     db.commit()
     return jsonify({'status': 'ok'})
@@ -189,101 +189,6 @@ def update_expense(eid):
 def delete_expense(eid):
     db = get_db()
     db.execute('DELETE FROM expenses WHERE id=? AND user_id=?', (eid, session['user_id']))
-    db.commit()
-    return jsonify({'status': 'ok'})
-
-
-# ─── Consumption API ────────────────────────────────────────────────────────────
-
-@app.route('/api/consumption', methods=['GET'])
-@login_required
-def get_consumption():
-    db = get_db()
-    rows = db.execute('''
-        SELECT ci.*, c.name as category_name, c.icon as category_icon, c.color as category_color
-        FROM consumption_items ci
-        LEFT JOIN categories c ON ci.category_id = c.id
-        WHERE ci.user_id = ? ORDER BY ci.current_level ASC
-    ''', (session['user_id'],)).fetchall()
-    result = []
-    now = datetime.now()
-    for row in rows:
-        d = dict(row)
-        # Update current level based on time elapsed
-        if d['last_updated'] and d['consuming_rate'] > 0:
-            try:
-                last = datetime.strptime(d['last_updated'], '%Y-%m-%d')
-                days_passed = (now - last).days
-                if days_passed > 0:
-                    consumed = days_passed * d['consuming_rate']
-                    d['current_level'] = max(0, d['current_level'] - consumed)
-                    db.execute(
-                        'UPDATE consumption_items SET current_level=?, last_updated=? WHERE id=?',
-                        (d['current_level'], now.strftime('%Y-%m-%d'), d['id']))
-            except ValueError:
-                pass
-        # Calculate projections
-        if d['consuming_rate'] > 0:
-            d['days_remaining'] = round(d['current_level'] / d['consuming_rate'], 1)
-            d['estimated_empty'] = (
-                now + timedelta(days=d['current_level'] / d['consuming_rate'])
-            ).strftime('%Y-%m-%d')
-            d['monthly_cost'] = round(d['price'] * (d['consuming_rate'] * 30 / 100), 2)
-        else:
-            d['days_remaining'] = -1
-            d['estimated_empty'] = None
-            d['monthly_cost'] = 0
-        result.append(d)
-    db.commit()
-    return jsonify(result)
-
-
-@app.route('/api/consumption', methods=['POST'])
-@login_required
-def create_consumption():
-    d = request.get_json()
-    db = get_db()
-    db.execute('''
-        INSERT INTO consumption_items
-        (user_id, name, description, category_id, price, currency,
-         consuming_rate, current_level, last_updated, auto_repurchase)
-        VALUES (?,?,?,?,?,?,?,?,?,?)
-    ''', (session['user_id'], d['name'], d.get('description', ''),
-          d.get('category_id'), float(d['price']), d.get('currency', 'USD'),
-          float(d.get('consuming_rate', 1.0)),
-          float(d.get('current_level', 100.0)),
-          datetime.now().strftime('%Y-%m-%d'),
-          int(d.get('auto_repurchase', 0))))
-    db.commit()
-    cid = db.execute('SELECT last_insert_rowid()').fetchone()[0]
-    return jsonify({'status': 'ok', 'id': cid})
-
-
-@app.route('/api/consumption/<int:cid>', methods=['PUT'])
-@login_required
-def update_consumption(cid):
-    d = request.get_json()
-    db = get_db()
-    db.execute('''
-        UPDATE consumption_items SET name=?, description=?, category_id=?, price=?,
-        currency=?, consuming_rate=?, current_level=?, auto_repurchase=?,
-        last_updated=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND user_id=?
-    ''', (d['name'], d.get('description', ''), d.get('category_id'),
-          float(d['price']), d.get('currency', 'USD'),
-          float(d.get('consuming_rate', 1.0)),
-          float(d.get('current_level', 100.0)),
-          int(d.get('auto_repurchase', 0)),
-          datetime.now().strftime('%Y-%m-%d'), cid, session['user_id']))
-    db.commit()
-    return jsonify({'status': 'ok'})
-
-
-@app.route('/api/consumption/<int:cid>', methods=['DELETE'])
-@login_required
-def delete_consumption(cid):
-    db = get_db()
-    db.execute('DELETE FROM consumption_items WHERE id=? AND user_id=?',
-               (cid, session['user_id']))
     db.commit()
     return jsonify({'status': 'ok'})
 
@@ -410,23 +315,42 @@ def get_currency_rates():
     s = db.execute('SELECT currency_api_url FROM user_settings WHERE user_id=?',
                    (session['user_id'],)).fetchone()
     api_url = s['currency_api_url'] if s else 'https://api.exchangerate-api.com/v4/latest/'
+
+    # Try primary API
     try:
         resp = http_requests.get(f'{api_url}{base}', timeout=10)
+        resp.raise_for_status()
         data = resp.json()
         return jsonify(data.get('rates', {}))
     except Exception:
-        # Fallback rates (approximate)
-        fallback = {
-            'USD': 1, 'EUR': 0.92, 'GBP': 0.79, 'JPY': 149.5, 'CNY': 7.24,
-            'CAD': 1.36, 'AUD': 1.53, 'CHF': 0.88, 'KRW': 1320, 'INR': 83.1,
-            'SGD': 1.34, 'HKD': 7.82, 'TWD': 31.5, 'MXN': 17.1, 'BRL': 4.97,
-            'SEK': 10.4, 'NOK': 10.5, 'DKK': 6.87, 'NZD': 1.63, 'THB': 35.2,
-            'RUB': 91.5, 'ZAR': 18.9, 'PHP': 56.2, 'MYR': 4.72, 'IDR': 15600,
-        }
-        if base != 'USD' and base in fallback:
-            rate = fallback[base]
-            return jsonify({k: round(v / rate, 6) for k, v in fallback.items()})
-        return jsonify(fallback)
+        pass
+
+    # Try fallback API (Fawazahmed0)
+    try:
+        fallback_url = f'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/{base.lower()}.json'
+        resp = http_requests.get(fallback_url, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+        rates_raw = data.get(base.lower(), {})
+        # Convert keys to uppercase to match expected format
+        rates = {k.upper(): v for k, v in rates_raw.items() if isinstance(v, (int, float))}
+        if rates:
+            return jsonify(rates)
+    except Exception:
+        pass
+
+    # Hardcoded fallback rates (approximate, base USD)
+    fallback = {
+        'USD': 1, 'EUR': 0.92, 'GBP': 0.79, 'JPY': 149.5, 'CNY': 7.24,
+        'CAD': 1.36, 'AUD': 1.53, 'CHF': 0.88, 'KRW': 1320, 'INR': 83.1,
+        'SGD': 1.34, 'HKD': 7.82, 'TWD': 31.5, 'MXN': 17.1, 'BRL': 4.97,
+        'SEK': 10.4, 'NOK': 10.5, 'DKK': 6.87, 'NZD': 1.63, 'THB': 35.2,
+        'RUB': 91.5, 'ZAR': 18.9, 'PHP': 56.2, 'MYR': 4.72, 'IDR': 15600,
+    }
+    if base != 'USD' and base in fallback:
+        rate = fallback[base]
+        return jsonify({k: round(v / rate, 6) for k, v in fallback.items()})
+    return jsonify(fallback)
 
 
 # ─── Statistics API ──────────────────────────────────────────────────────────────
@@ -471,11 +395,9 @@ def get_stats_summary():
             (uid, ms, me)).fetchone()['t']
         monthly.append({'month': dt.strftime('%Y-%m'), 'total': round(t, 2)})
 
-    # Consumption monthly costs
-    consumption_cost = db.execute('''
-        SELECT COALESCE(SUM(price * consuming_rate * 30 / 100), 0) as total
-        FROM consumption_items WHERE user_id=? AND consuming_rate > 0
-    ''', (uid,)).fetchone()['total']
+    # Total expenses count
+    total_count = db.execute(
+        'SELECT COUNT(*) as c FROM expenses WHERE user_id=?', (uid,)).fetchone()['c']
 
     # Top expenses this month
     top_expenses = db.execute('''
@@ -497,10 +419,9 @@ def get_stats_summary():
         'month_total': round(month_total, 2),
         'recurring_count': recurring['count'],
         'recurring_total': round(recurring['total'], 2),
-        'consumption_monthly': round(consumption_cost, 2),
+        'total_count': total_count,
         'categories': [dict(c) for c in categories],
         'monthly_totals': monthly,
-        'total_with_consumption': round(month_total + consumption_cost, 2),
         'top_expenses': [dict(e) for e in top_expenses],
         'payment_breakdown': [dict(p) for p in payment_breakdown],
     })
@@ -607,6 +528,33 @@ def get_calendar_data():
                 if dt >= billing:
                     occurrences.append(dt.day)
                 dt += timedelta(days=interval_days)
+        elif interval == 'specific_days' and e.get('specific_days'):
+            # specific_days is comma-separated weekday numbers (0=Mon, 6=Sun)
+            selected_days = [int(x.strip()) for x in e['specific_days'].split(',') if x.strip().isdigit()]
+            for d in range(1, days_in_month + 1):
+                dt = datetime(year, month, d)
+                if dt >= billing and dt.weekday() in selected_days:
+                    occurrences.append(d)
+        elif interval == 'bimonthly':
+            dt = billing
+            while dt < datetime(year, month, 1):
+                m = dt.month + 2
+                y = dt.year + (m - 1) // 12
+                m = ((m - 1) % 12) + 1
+                target_day = min(dt.day, calendar.monthrange(y, m)[1])
+                dt = datetime(y, m, target_day)
+            if dt.year == year and dt.month == month:
+                occurrences.append(dt.day)
+        elif interval == 'semiannually':
+            dt = billing
+            while dt < datetime(year, month, 1):
+                m = dt.month + 6
+                y = dt.year + (m - 1) // 12
+                m = ((m - 1) % 12) + 1
+                target_day = min(dt.day, calendar.monthrange(y, m)[1])
+                dt = datetime(y, m, target_day)
+            if dt.year == year and dt.month == month:
+                occurrences.append(dt.day)
 
         for day in occurrences:
             date_str = f'{year}-{month:02d}-{day:02d}'
@@ -618,27 +566,6 @@ def get_calendar_data():
                     'payment_method_name': e['payment_method_name'],
                     'billing_interval': e['billing_interval'],
                 })
-
-    # Also add consumption replacement dates
-    consumption = db.execute(
-        'SELECT * FROM consumption_items WHERE user_id=? AND consuming_rate > 0',
-        (uid,)).fetchall()
-    for item in consumption:
-        ci = dict(item)
-        if ci['consuming_rate'] > 0 and ci['current_level'] is not None:
-            days_left = ci['current_level'] / ci['consuming_rate']
-            empty_date = datetime.now() + timedelta(days=days_left)
-            if empty_date.year == year and empty_date.month == month:
-                date_str = f'{year}-{month:02d}-{empty_date.day:02d}'
-                if date_str in cal_data:
-                    cal_data[date_str].append({
-                        'id': ci['id'], 'title': f"🔄 Restock: {ci['name']}",
-                        'amount': ci['price'], 'currency': ci['currency'],
-                        'category_name': 'Consumption', 'category_icon': '🔄',
-                        'category_color': '#f59e0b',
-                        'payment_method_name': None,
-                        'billing_interval': 'consumption',
-                    })
 
     return jsonify(cal_data)
 

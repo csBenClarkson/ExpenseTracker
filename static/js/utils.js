@@ -187,9 +187,9 @@ ET.Utils = (function () {
     function intervalLabel(interval, customDays) {
         const labels = {
             once: 'One-time', daily: 'Daily', weekdays: 'Weekdays', weekends: 'Weekends',
-            specific_days: 'Specific days', specific_dates: 'Specific dates',
-            weekly: 'Weekly', biweekly: 'Biweekly', monthly: 'Monthly', quarterly: 'Quarterly',
-            yearly: 'Yearly', custom: `Every ${customDays}d`,
+            specific_days: 'Specific days', weekly: 'Weekly', biweekly: 'Biweekly',
+            monthly: 'Monthly', bimonthly: 'Bimonthly', quarterly: 'Quarterly',
+            semiannually: 'Semi-annually', yearly: 'Yearly', custom: `Every ${customDays}d`,
         };
         return labels[interval] || interval;
     }

@@ -28,11 +28,10 @@ ET.ModuleName = (function() {
 
 **Modules:**
 - `ET.Utils` - Core utilities, currency conversion, API calls
-- `ET.Tooltip` - Tooltip system (NEW)
-- `ET.IconUpload` - Icon management (NEW)
+- `ET.Tooltip` - Tooltip system
+- `ET.IconUpload` - Icon management
 - `ET.App` - View routing and modals
 - `ET.Expenses` - Expense CRUD
-- `ET.Consumption` - Consumption items
 - `ET.Calendar` - Calendar views and calculations
 - `ET.Statistics` - Chart rendering
 - `ET.Settings` - User preferences

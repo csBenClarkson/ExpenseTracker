@@ -72,7 +72,7 @@ ET.Expenses = (function () {
                         <span>${e.payment_method_icon || ''} ${e.payment_method_name || ''}</span>
                     </div>
                 </div>
-                <div class="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
+                <div class="flex items-center justify-between mt-3 pt-3 border-t border-[var(--card-border)]">
                     <span class="text-xs text-[var(--text-secondary)]"><i class="far fa-calendar mr-1"></i>${ET.Utils.formatDate(e.billing_date)}</span>
                     <div class="flex gap-1">
                         <button onclick="ET.Expenses.openEditModal(${e.id})" class="px-2 py-1 rounded-lg text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/10 transition tooltip-container" data-tooltip="Edit expense" data-tooltip-pos="top">
@@ -112,7 +112,7 @@ ET.Expenses = (function () {
                     <div class="flex items-center gap-2">
                         <span>${e.category_icon || '📌'}</span>
                         <div>
-                            <div class="font-medium text-white">${escHtml(e.title)}</div>
+                            <div class="font-medium text-[var(--text-primary)]">${escHtml(e.title)}</div>
                             ${e.description ? `<div class="text-xs text-[var(--text-secondary)] truncate max-w-[200px]">${escHtml(e.description)}</div>` : ''}
                         </div>
                     </div>
@@ -138,11 +138,8 @@ ET.Expenses = (function () {
     /* ── Summary Cards ───────────────────────────────────────────────── */
     function renderSummary(stats) {
         const el = document.getElementById('board-summary');
-        // Assume stats amounts are in base currency (USD), convert to display currency
         const monthTotal = ET.Utils.convert(stats.month_total, 'USD', ET.Utils.displayCurrency);
         const recurringTotal = ET.Utils.convert(stats.recurring_total, 'USD', ET.Utils.displayCurrency);
-        const consumptionMonthly = ET.Utils.convert(stats.consumption_monthly, 'USD', ET.Utils.displayCurrency);
-        const totalWithConsumption = ET.Utils.convert(stats.total_with_consumption, 'USD', ET.Utils.displayCurrency);
         
         el.innerHTML = `
             <div class="summary-card">
@@ -165,10 +162,10 @@ ET.Expenses = (function () {
             </div>
             <div class="summary-card">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center"><i class="fas fa-shopping-basket text-amber-400"></i></div>
+                    <div class="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center"><i class="fas fa-receipt text-amber-400"></i></div>
                     <div>
-                        <div class="text-xs text-[var(--text-secondary)]">Consumption/mo</div>
-                        <div class="amount-display text-xl text-[var(--text-primary)]">${ET.Utils.formatMoney(consumptionMonthly, ET.Utils.displayCurrency)}</div>
+                        <div class="text-xs text-[var(--text-secondary)]">Total Expenses</div>
+                        <div class="amount-display text-xl text-[var(--text-primary)]">${stats.total_count || 0}</div>
                     </div>
                 </div>
             </div>
@@ -176,8 +173,8 @@ ET.Expenses = (function () {
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center"><i class="fas fa-wallet text-emerald-400"></i></div>
                     <div>
-                        <div class="text-xs text-[var(--text-secondary)]">Total Expense</div>
-                        <div class="amount-display text-xl text-[var(--text-primary)]">${ET.Utils.formatMoney(totalWithConsumption, ET.Utils.displayCurrency)}</div>
+                        <div class="text-xs text-[var(--text-secondary)]">Combined Total</div>
+                        <div class="amount-display text-xl text-[var(--text-primary)]">${ET.Utils.formatMoney(monthTotal + recurringTotal, ET.Utils.displayCurrency)}</div>
                     </div>
                 </div>
             </div>`;
@@ -253,8 +250,9 @@ ET.Expenses = (function () {
                         <option value="weekly" ${e.billing_interval === 'weekly' ? 'selected' : ''}>Weekly</option>
                         <option value="biweekly" ${e.billing_interval === 'biweekly' ? 'selected' : ''}>Biweekly</option>
                         <option value="monthly" ${e.billing_interval === 'monthly' ? 'selected' : ''}>Monthly</option>
-                        <option value="specific_dates" ${e.billing_interval === 'specific_dates' ? 'selected' : ''}>Specific dates of month...</option>
+                        <option value="bimonthly" ${e.billing_interval === 'bimonthly' ? 'selected' : ''}>Bimonthly</option>
                         <option value="quarterly" ${e.billing_interval === 'quarterly' ? 'selected' : ''}>Quarterly</option>
+                        <option value="semiannually" ${e.billing_interval === 'semiannually' ? 'selected' : ''}>Semi-annually</option>
                         <option value="yearly" ${e.billing_interval === 'yearly' ? 'selected' : ''}>Yearly</option>
                         <option value="custom" ${e.billing_interval === 'custom' ? 'selected' : ''}>Custom days...</option>
                     </select>
@@ -268,20 +266,14 @@ ET.Expenses = (function () {
             <!-- Specific Days of Week Selector -->
             <div id="specific-days-row" class="grid grid-cols-7 gap-1" style="display:${e.billing_interval === 'specific_days' ? 'grid' : 'none'}">
                 ${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => {
-                    const checked = e.specific_days && e.specific_days.includes(i) ? 'checked' : '';
+                    const checked = e.specific_days ? e.specific_days.split(',').map(Number).includes(i) : false;
                     return `
                         <label class="flex flex-col items-center glass-input rounded-lg px-2 py-2 cursor-pointer hover:bg-white/10 transition">
-                            <input type="checkbox" name="specific_days" value="${i}" ${checked} class="accent-cyan-500 mb-1">
+                            <input type="checkbox" name="specific_days" value="${i}" ${checked ? 'checked' : ''} class="accent-cyan-500 mb-1">
                             <span class="text-xs text-[var(--text-secondary)]">${day}</span>
                         </label>
                     `;
                 }).join('')}
-            </div>
-            
-            <!-- Specific Dates of Month Selector -->
-            <div id="specific-dates-row" style="display:${e.billing_interval === 'specific_dates' ? 'block' : 'none'}">
-                <label class="block text-xs text-[var(--text-secondary)] mb-1">Dates (comma-separated, e.g., 1,15,30)</label>
-                <input name="specific_dates" type="text" value="${e.specific_dates || ''}" class="glass-input w-full px-3 py-2.5 rounded-xl text-[var(--text-primary)] text-sm" placeholder="1,15,30">
             </div>
             
             <div class="flex items-center gap-2">
@@ -326,16 +318,6 @@ ET.Expenses = (function () {
             }
         }
         
-        // Collect specific dates of month if selected
-        let specificDates = null;
-        if (form.billing_interval.value === 'specific_dates') {
-            specificDates = form.specific_dates.value.trim();
-            if (!specificDates) {
-                ET.Utils.toast('Please enter at least one date (e.g., 1,15,30)', 'error');
-                return;
-            }
-        }
-        
         const data = {
             title: form.title.value.trim(),
             description: form.description.value.trim(),
@@ -347,7 +329,6 @@ ET.Expenses = (function () {
             billing_interval: form.billing_interval.value,
             custom_interval_days: parseInt(form.custom_interval_days.value) || 0,
             specific_days: specificDays,
-            specific_dates: specificDates,
             is_active: form.is_active.checked ? 1 : 0,
         };
 
@@ -389,20 +370,16 @@ ET.Expenses = (function () {
     function _toggleIntervalOptions(value) {
         const customRow = document.getElementById('custom-interval-row');
         const specificDaysRow = document.getElementById('specific-days-row');
-        const specificDatesRow = document.getElementById('specific-dates-row');
         
         // Hide all special options first
         if (customRow) customRow.style.display = 'none';
         if (specificDaysRow) specificDaysRow.style.display = 'none';
-        if (specificDatesRow) specificDatesRow.style.display = 'none';
         
         // Show the appropriate one
         if (value === 'custom' && customRow) {
             customRow.style.display = 'block';
         } else if (value === 'specific_days' && specificDaysRow) {
             specificDaysRow.style.display = 'grid';
-        } else if (value === 'specific_dates' && specificDatesRow) {
-            specificDatesRow.style.display = 'block';
         }
     }
 
