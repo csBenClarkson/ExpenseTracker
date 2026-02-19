@@ -358,11 +358,14 @@ ET.Calendar = (function () {
                         <div class="flex items-center justify-between glass-input rounded-xl px-3 py-2 hover:bg-white/10 transition text-sm">
                             <div class="flex items-center gap-2 flex-1">
                                 <div class="w-6 h-6 rounded flex items-center justify-center text-xs flex-shrink-0" style="background:${(it.category_color || 'var(--accent)') + '33'}">
-                                    ${it.category_icon || '📌'}
+                                    ${renderIcon(it.category_icon_type, it.category_icon, '📌', 'sm')}
                                 </div>
                                 <div class="flex-1 min-w-0">
                                     <div class="text-[var(--text-primary)] truncate font-medium">${escHtml(it.title)}</div>
-                                    <div class="text-xs text-[var(--text-secondary)]">${ET.Utils.formatDate(it.date)} · ${it.category_name || 'Uncategorized'}</div>
+                                    <div class="text-xs text-[var(--text-secondary)] flex items-center gap-1.5 min-w-0">
+                                        <span>${ET.Utils.formatDate(it.date)} · ${it.category_name || 'Uncategorized'}</span>
+                                        ${it.payment_method_name ? `<span class="inline-flex items-center gap-1 min-w-0">· ${renderIcon(it.payment_method_icon_type, it.payment_method_icon, '💳', 'sm')}<span class="truncate">${escHtml(it.payment_method_name)}</span></span>` : ''}
+                                    </div>
                                 </div>
                             </div>
                             <div class="text-right flex-shrink-0">
@@ -504,11 +507,14 @@ ET.Calendar = (function () {
                     <div class="flex items-center justify-between glass-input rounded-xl px-4 py-3 hover:bg-white/10 transition">
                         <div class="flex items-center gap-3">
                             <div class="w-8 h-8 rounded-lg flex items-center justify-center text-sm" style="background:${(it.category_color || 'var(--accent)') + '33'}">
-                                ${it.category_icon || '📌'}
+                                ${renderIcon(it.category_icon_type, it.category_icon, '📌', 'sm')}
                             </div>
                             <div>
                                 <div class="text-sm font-medium text-[var(--text-primary)]">${escHtml(it.title)}</div>
-                                <div class="text-xs text-[var(--text-secondary)]">${it.category_name || ''} ${it.payment_method_name ? '· ' + it.payment_method_name : ''}</div>
+                                <div class="text-xs text-[var(--text-secondary)] flex items-center gap-1.5 min-w-0">
+                                    <span>${it.category_name || ''}</span>
+                                    ${it.payment_method_name ? `<span class="inline-flex items-center gap-1 min-w-0">· ${renderIcon(it.payment_method_icon_type, it.payment_method_icon, '💳', 'sm')}<span class="truncate">${escHtml(it.payment_method_name)}</span></span>` : ''}
+                                </div>
                             </div>
                         </div>
                         <div class="text-right">
@@ -629,6 +635,22 @@ ET.Calendar = (function () {
                 showRangeSummary(from, to);
             }
         }
+    }
+
+    function inferIconType(iconType, iconValue) {
+        if (iconType) return iconType;
+        const v = String(iconValue || '');
+        if (v.startsWith('data:image/') || v.startsWith('http')) return 'image';
+        return 'emoji';
+    }
+
+    function renderIcon(iconType, iconValue, fallback = '📌', sizeClass = 'sm') {
+        const type = inferIconType(iconType, iconValue);
+        const value = iconValue || fallback;
+        if (ET.IconUpload && ET.IconUpload.renderIcon) {
+            return ET.IconUpload.renderIcon(type, value, sizeClass);
+        }
+        return `<span class="icon-display emoji ${sizeClass}">${escHtml(value)}</span>`;
     }
 
     return { 

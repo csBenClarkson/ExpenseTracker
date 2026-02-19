@@ -54,7 +54,7 @@ ET.Expenses = (function () {
             <div class="expense-card slide-up" style="animation-delay:${i * 0.03}s">
                 <div class="flex items-start justify-between mb-3">
                     <div class="flex items-center gap-2.5">
-                        <span class="text-xl">${e.category_icon || '📌'}</span>
+                        ${renderIcon(e.category_icon_type, e.category_icon, '📌', 'lg')}
                         <div>
                             <h4 class="font-semibold text-[var(--text-primary)] text-sm leading-tight">${escHtml(e.title)}</h4>
                             <span class="text-xs text-[var(--text-secondary)]">${e.category_name || 'Uncategorized'}</span>
@@ -68,8 +68,9 @@ ET.Expenses = (function () {
                         <div class="amount-display text-lg text-[var(--text-primary)]">${ET.Utils.convertAndFormat(e.amount, e.currency)}</div>
                         ${e.currency !== ET.Utils.displayCurrency ? `<div class="text-xs text-[var(--text-secondary)]">${ET.Utils.formatMoneyFull(e.amount, e.currency)}</div>` : ''}
                     </div>
-                    <div class="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-                        <span>${e.payment_method_icon || ''} ${e.payment_method_name || ''}</span>
+                    <div class="flex items-center gap-2 text-xs text-[var(--text-secondary)] min-w-0">
+                        ${e.payment_method_name ? renderIcon(e.payment_method_icon_type, e.payment_method_icon, '💳', 'sm') : ''}
+                        <span class="truncate">${escHtml(e.payment_method_name || '')}</span>
                     </div>
                 </div>
                 <div class="flex items-center justify-between mt-3 pt-3 border-t border-[var(--card-border)]">
@@ -110,7 +111,7 @@ ET.Expenses = (function () {
             <tr class="table-row">
                 <td class="px-4 py-3">
                     <div class="flex items-center gap-2">
-                        <span>${e.category_icon || '📌'}</span>
+                        ${renderIcon(e.category_icon_type, e.category_icon, '📌', 'sm')}
                         <div>
                             <div class="font-medium text-[var(--text-primary)]">${escHtml(e.title)}</div>
                             ${e.description ? `<div class="text-xs text-[var(--text-secondary)] truncate max-w-[200px]">${escHtml(e.description)}</div>` : ''}
@@ -119,7 +120,12 @@ ET.Expenses = (function () {
                 </td>
                 <td class="px-4 py-3 amount-display text-[var(--text-primary)]">${ET.Utils.convertAndFormat(e.amount, e.currency)}</td>
                 <td class="px-4 py-3 hidden md:table-cell"><span style="color:${e.category_color || '#94a3b8'}">${e.category_name || '-'}</span></td>
-                <td class="px-4 py-3 hidden md:table-cell">${e.payment_method_icon || ''} ${e.payment_method_name || '-'}</td>
+                <td class="px-4 py-3 hidden md:table-cell">
+                    <div class="flex items-center gap-2 min-w-0">
+                        ${e.payment_method_name ? renderIcon(e.payment_method_icon_type, e.payment_method_icon, '💳', 'sm') : ''}
+                        <span class="truncate">${escHtml(e.payment_method_name || '-')}</span>
+                    </div>
+                </td>
                 <td class="px-4 py-3 text-[var(--text-secondary)]">${ET.Utils.formatDate(e.billing_date)}</td>
                 <td class="px-4 py-3 hidden sm:table-cell"><span class="badge badge-${e.billing_interval}">${ET.Utils.intervalLabel(e.billing_interval, e.custom_interval_days)}</span></td>
                 <td class="px-4 py-3 text-right">
@@ -138,16 +144,51 @@ ET.Expenses = (function () {
     /* ── Summary Cards ───────────────────────────────────────────────── */
     function renderSummary(stats) {
         const el = document.getElementById('board-summary');
-        const monthTotal = ET.Utils.convert(stats.month_total, 'USD', ET.Utils.displayCurrency);
-        const recurringTotal = ET.Utils.convert(stats.recurring_total, 'USD', ET.Utils.displayCurrency);
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth() + 1;
+        const dim = daysInMonth(year, month);
+
+        let monthTotal = 0;
+        let recurringTotal = 0;
+        let recurringCount = 0;
+        let peakDayTotal = 0;
+
+        for (let d = 1; d <= dim; d++) {
+            const dt = new Date(year, month - 1, d);
+            let dayTotal = 0;
+            _expenses.forEach(exp => {
+                if (exp.is_active === 0) return;
+                if (!occursOnDate(exp, dt)) return;
+                dayTotal += ET.Utils.convert(exp.amount, exp.currency, ET.Utils.displayCurrency);
+            });
+            if (dayTotal > peakDayTotal) peakDayTotal = dayTotal;
+        }
+
+        _expenses.forEach(exp => {
+            if (exp.is_active === 0) return;
+
+            const countInMonth = getOccurrenceCountInMonth(exp, year, month);
+            if (countInMonth <= 0) return;
+
+            const converted = ET.Utils.convert(exp.amount * countInMonth, exp.currency, ET.Utils.displayCurrency);
+            if ((exp.billing_interval || 'once') === 'once') {
+                monthTotal += converted;
+            } else {
+                recurringTotal += converted;
+            }
+        });
+
+        recurringCount = _expenses.filter(e => e.is_active !== 0 && (e.billing_interval || 'once') !== 'once').length;
+        const totalCount = (_expenses && _expenses.length) || stats.total_count || 0;
         
         el.innerHTML = `
             <div class="summary-card">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center"><i class="fas fa-calendar-check text-cyan-400"></i></div>
                     <div>
-                        <div class="text-xs text-[var(--text-secondary)]">This Month</div>
-                        <div class="amount-display text-xl text-[var(--text-primary)]">${ET.Utils.formatMoney(monthTotal, ET.Utils.displayCurrency)}</div>
+                        <div class="text-xs text-[var(--text-secondary)]">Peek This Month</div>
+                        <div class="amount-display text-xl text-[var(--text-primary)]">${ET.Utils.formatMoney(peakDayTotal, ET.Utils.displayCurrency)}</div>
                     </div>
                 </div>
             </div>
@@ -155,7 +196,7 @@ ET.Expenses = (function () {
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center"><i class="fas fa-sync-alt text-purple-400"></i></div>
                     <div>
-                        <div class="text-xs text-[var(--text-secondary)]">Recurring (${stats.recurring_count})</div>
+                        <div class="text-xs text-[var(--text-secondary)]">Recurring (${recurringCount})</div>
                         <div class="amount-display text-xl text-[var(--text-primary)]">${ET.Utils.formatMoney(recurringTotal, ET.Utils.displayCurrency)}</div>
                     </div>
                 </div>
@@ -165,7 +206,7 @@ ET.Expenses = (function () {
                     <div class="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center"><i class="fas fa-receipt text-amber-400"></i></div>
                     <div>
                         <div class="text-xs text-[var(--text-secondary)]">Total Expenses</div>
-                        <div class="amount-display text-xl text-[var(--text-primary)]">${stats.total_count || 0}</div>
+                        <div class="amount-display text-xl text-[var(--text-primary)]">${totalCount}</div>
                     </div>
                 </div>
             </div>
@@ -180,12 +221,174 @@ ET.Expenses = (function () {
             </div>`;
     }
 
+    function parseYmd(dateStr) {
+        const [y, m, d] = String(dateStr || '').split('-').map(Number);
+        if (!y || !m || !d) return null;
+        return new Date(y, m - 1, d);
+    }
+
+    function normalizeDate(dt) {
+        const d = new Date(dt);
+        d.setHours(0, 0, 0, 0);
+        return d;
+    }
+
+    function sameYearMonth(dt, year, month) {
+        return dt.getFullYear() === year && (dt.getMonth() + 1) === month;
+    }
+
+    function daysInMonth(year, month) {
+        return new Date(year, month, 0).getDate();
+    }
+
+    function occursOnDate(expense, targetDate) {
+        const billing = parseYmd(expense.billing_date);
+        if (!billing) return false;
+
+        const interval = expense.billing_interval || 'once';
+        const dt = normalizeDate(targetDate);
+        const b = normalizeDate(billing);
+        if (dt < b) return false;
+
+        if (interval === 'once') {
+            return dt.getTime() === b.getTime();
+        }
+
+        if (interval === 'daily') {
+            return true;
+        }
+
+        const wd = dt.getDay();
+        const mon0 = (wd + 6) % 7; // Mon=0 ... Sun=6
+
+        if (interval === 'weekdays') return mon0 <= 4;
+        if (interval === 'weekends') return mon0 >= 5;
+        if (interval === 'specific_days') {
+            const selected = String(expense.specific_days || '')
+                .split(',')
+                .map(x => parseInt(x, 10))
+                .filter(Number.isInteger);
+            return selected.includes(mon0);
+        }
+
+        const msPerDay = 24 * 60 * 60 * 1000;
+        const diffDays = Math.round((dt.getTime() - b.getTime()) / msPerDay);
+
+        if (interval === 'weekly') return diffDays % 7 === 0;
+        if (interval === 'biweekly') return diffDays % 14 === 0;
+        if (interval === 'custom') {
+            const step = parseInt(expense.custom_interval_days, 10) || 0;
+            return step > 0 && diffDays % step === 0;
+        }
+
+        const stepMonths = interval === 'monthly' ? 1
+            : interval === 'bimonthly' ? 2
+            : interval === 'quarterly' ? 3
+            : interval === 'semiannually' ? 6
+            : interval === 'yearly' ? 12
+            : 0;
+
+        if (stepMonths > 0) {
+            const monthsDiff = (dt.getFullYear() - b.getFullYear()) * 12 + (dt.getMonth() - b.getMonth());
+            if (monthsDiff < 0 || monthsDiff % stepMonths !== 0) return false;
+            const dom = Math.min(b.getDate(), daysInMonth(dt.getFullYear(), dt.getMonth() + 1));
+            return dt.getDate() === dom;
+        }
+
+        return false;
+    }
+
+    function getOccurrenceCountInMonth(expense, year, month) {
+        const billing = parseYmd(expense.billing_date);
+        if (!billing) return 0;
+
+        const interval = expense.billing_interval || 'once';
+        const dim = daysInMonth(year, month);
+        const monthStart = new Date(year, month - 1, 1);
+
+        if (interval === 'once') {
+            return sameYearMonth(billing, year, month) ? 1 : 0;
+        }
+
+        if (interval === 'daily') {
+            let count = 0;
+            for (let d = 1; d <= dim; d++) {
+                const dt = new Date(year, month - 1, d);
+                if (dt >= billing) count++;
+            }
+            return count;
+        }
+
+        if (interval === 'weekdays' || interval === 'weekends' || interval === 'specific_days') {
+            const selected = interval === 'specific_days'
+                ? String(expense.specific_days || '').split(',').map(x => parseInt(x, 10)).filter(Number.isInteger)
+                : null;
+            let count = 0;
+            for (let d = 1; d <= dim; d++) {
+                const dt = new Date(year, month - 1, d);
+                if (dt < billing) continue;
+                const wd = dt.getDay();
+                const mon0 = (wd + 6) % 7; // convert JS Sun=0..Sat=6 to Mon=0..Sun=6
+                if (interval === 'weekdays' && mon0 <= 4) count++;
+                else if (interval === 'weekends' && mon0 >= 5) count++;
+                else if (interval === 'specific_days' && selected.includes(mon0)) count++;
+            }
+            return count;
+        }
+
+        if (interval === 'weekly' || interval === 'biweekly') {
+            const step = interval === 'weekly' ? 7 : 14;
+            let dt = new Date(billing);
+            while (dt < monthStart) dt.setDate(dt.getDate() + step);
+            let count = 0;
+            while (sameYearMonth(dt, year, month)) {
+                if (dt >= billing) count++;
+                dt.setDate(dt.getDate() + step);
+            }
+            return count;
+        }
+
+        if (interval === 'custom') {
+            const step = parseInt(expense.custom_interval_days, 10) || 0;
+            if (step <= 0) return 0;
+            let dt = new Date(billing);
+            while (dt < monthStart) dt.setDate(dt.getDate() + step);
+            let count = 0;
+            while (sameYearMonth(dt, year, month)) {
+                if (dt >= billing) count++;
+                dt.setDate(dt.getDate() + step);
+            }
+            return count;
+        }
+
+        if (interval === 'monthly' || interval === 'bimonthly' || interval === 'quarterly' || interval === 'semiannually' || interval === 'yearly') {
+            const stepMonths = interval === 'monthly' ? 1
+                : interval === 'bimonthly' ? 2
+                : interval === 'quarterly' ? 3
+                : interval === 'semiannually' ? 6
+                : 12;
+
+            let dt = new Date(billing);
+            while (dt < monthStart) {
+                const m = dt.getMonth() + 1 + stepMonths;
+                const y = dt.getFullYear() + Math.floor((m - 1) / 12);
+                const nm = ((m - 1) % 12) + 1;
+                const targetDay = Math.min(dt.getDate(), new Date(y, nm, 0).getDate());
+                dt = new Date(y, nm - 1, targetDay);
+            }
+            return sameYearMonth(dt, year, month) && dt >= billing ? 1 : 0;
+        }
+
+        return 0;
+    }
+
     /* ── Populate category filter ────────────────────────────────────── */
     function populateFilters() {
         const sel = document.getElementById('board-filter-cat');
         const cats = ET.Utils.categories;
+        const iconText = c => (c.icon_type === 'upload' || c.icon_type === 'image') ? '🖼️' : (c.icon || '📁');
         sel.innerHTML = '<option value="">All Categories</option>' +
-            cats.map(c => `<option value="${c.id}">${c.icon} ${c.name}</option>`).join('');
+            cats.map(c => `<option value="${c.id}" data-icon="${escAttr(c.icon || '')}" data-icon-type="${escAttr(c.icon_type || 'emoji')}" data-label="${escAttr(c.name || 'Uncategorized')}">${iconText(c)} ${escHtml(c.name || 'Uncategorized')}</option>`).join('');
     }
 
     /* ── Modal Form ──────────────────────────────────────────────────── */
@@ -193,6 +396,7 @@ ET.Expenses = (function () {
         const e = expense || {};
         const cats = ET.Utils.categories;
         const pms = ET.Utils.paymentMethods;
+        const iconText = (item, fallback) => (item.icon_type === 'upload' || item.icon_type === 'image') ? '🖼️' : (item.icon || fallback);
         const currencies = Object.keys(ET.Utils.CURRENCY_SYMBOLS);
         const billingDate = e.billing_date || defaultDate || new Date().toISOString().split('T')[0];
 
@@ -223,14 +427,14 @@ ET.Expenses = (function () {
                     <label class="block text-xs text-[var(--text-secondary)] mb-1">Category</label>
                     <select name="category_id" class="glass-input w-full px-3 py-2.5 rounded-xl text-[var(--text-primary)] text-sm">
                         <option value="">None</option>
-                        ${cats.map(c => `<option value="${c.id}" ${e.category_id == c.id ? 'selected' : ''}>${c.icon} ${c.name}</option>`).join('')}
+                        ${cats.map(c => `<option value="${c.id}" data-icon="${escAttr(c.icon || '')}" data-icon-type="${escAttr(c.icon_type || 'emoji')}" data-label="${escAttr(c.name || 'Uncategorized')}" ${e.category_id == c.id ? 'selected' : ''}>${iconText(c, '📁')} ${escHtml(c.name || 'Uncategorized')}</option>`).join('')}
                     </select>
                 </div>
                 <div>
                     <label class="block text-xs text-[var(--text-secondary)] mb-1">Payment Method</label>
                     <select name="payment_method_id" class="glass-input w-full px-3 py-2.5 rounded-xl text-[var(--text-primary)] text-sm">
                         <option value="">None</option>
-                        ${pms.map(p => `<option value="${p.id}" ${e.payment_method_id == p.id ? 'selected' : ''}>${p.icon} ${p.name}</option>`).join('')}
+                        ${pms.map(p => `<option value="${p.id}" data-icon="${escAttr(p.icon || '')}" data-icon-type="${escAttr(p.icon_type || 'emoji')}" data-label="${escAttr(p.name || 'Payment Method')}" ${e.payment_method_id == p.id ? 'selected' : ''}>${iconText(p, '💳')} ${escHtml(p.name || 'Payment Method')}</option>`).join('')}
                     </select>
                 </div>
             </div>
@@ -365,6 +569,22 @@ ET.Expenses = (function () {
     /* ── HTML helpers ────────────────────────────────────────────────── */
     function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
     function escAttr(s) { return String(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+
+    function inferIconType(iconType, iconValue) {
+        if (iconType) return iconType;
+        const v = String(iconValue || '');
+        if (v.startsWith('data:image/') || v.startsWith('http')) return 'image';
+        return 'emoji';
+    }
+
+    function renderIcon(iconType, iconValue, fallback = '📌', sizeClass = 'sm') {
+        const type = inferIconType(iconType, iconValue);
+        const value = iconValue || fallback;
+        if (ET.IconUpload && ET.IconUpload.renderIcon) {
+            return ET.IconUpload.renderIcon(type, value, sizeClass);
+        }
+        return `<span class="icon-display emoji ${sizeClass}">${escHtml(value)}</span>`;
+    }
 
     // Toggle interval-specific options in the modal
     function _toggleIntervalOptions(value) {

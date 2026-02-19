@@ -4,6 +4,46 @@ window.ET = window.ET || {};
 ET.Dropdown = (function () {
     const _registry = new WeakMap();
 
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str == null ? '' : String(str);
+        return div.innerHTML;
+    }
+
+    function escapeAttr(str) {
+        return String(str == null ? '' : str)
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+
+    function getOptionIconHtml(opt) {
+        const icon = opt.getAttribute('data-icon') || '';
+        const iconType = opt.getAttribute('data-icon-type') || 'emoji';
+        if (!icon) return '';
+
+        if (iconType === 'upload' || iconType === 'image') {
+            return `<span class="icon-display image sm" style="background-image:url(&quot;${escapeAttr(icon)}&quot;)"></span>`;
+        }
+        return `<span class="icon-display emoji sm">${escapeHtml(icon)}</span>`;
+    }
+
+    function getOptionLabel(opt) {
+        return opt.getAttribute('data-label') || opt.textContent || '';
+    }
+
+    function getOptionContentHtml(opt) {
+        const iconHtml = getOptionIconHtml(opt);
+        const label = escapeHtml(getOptionLabel(opt));
+        return `
+            <span class="flex items-center gap-2 flex-1 min-w-0">
+                ${iconHtml}
+                <span class="truncate">${label}</span>
+            </span>`;
+    }
+
     /**
      * Enhance all native <select> elements matching a selector
      * into fully custom dropdown components.
@@ -46,7 +86,7 @@ ET.Dropdown = (function () {
                     <svg class="dropdown-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="20 6 9 17 4 12"></polyline>
                     </svg>
-                    <span class="flex-1">${opt.textContent}</span>`;
+                    ${getOptionContentHtml(opt)}`;
                 item.addEventListener('click', e => {
                     e.stopPropagation();
                     selectItem(sel, wrapper, opt.value);
@@ -112,7 +152,7 @@ ET.Dropdown = (function () {
     function updateTriggerLabel(sel, trigger) {
         const selected = sel.options[sel.selectedIndex];
         if (selected) {
-            trigger.innerHTML = `<span class="truncate">${selected.textContent}</span>`;
+            trigger.innerHTML = getOptionContentHtml(selected);
         }
     }
 

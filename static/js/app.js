@@ -249,16 +249,32 @@ ET.App = (function () {
     function populateExpenseFilters() {
         const categoryFilter = document.getElementById('exp-filter-category');
         const paymentFilter = document.getElementById('exp-filter-payment');
+        const iconText = (item, fallback) => (item.icon_type === 'upload' || item.icon_type === 'image') ? '🖼️' : (item.icon || fallback);
         
         if (categoryFilter && ET.Utils.categories) {
             categoryFilter.innerHTML = '<option value="">All Categories</option>' + 
-                ET.Utils.categories.map(c => `<option value="${c.id}">${c.icon} ${c.name}</option>`).join('');
+                ET.Utils.categories.map(c => `<option value="${c.id}" data-icon="${escAttr(c.icon || '')}" data-icon-type="${escAttr(c.icon_type || 'emoji')}" data-label="${escAttr(c.name || 'Uncategorized')}">${iconText(c, '📁')} ${escHtml(c.name || 'Uncategorized')}</option>`).join('');
         }
         
         if (paymentFilter && ET.Utils.paymentMethods) {
             paymentFilter.innerHTML = '<option value="">All Payment Methods</option>' + 
-                ET.Utils.paymentMethods.map(p => `<option value="${p.id}">${p.icon} ${p.name}</option>`).join('');
+                ET.Utils.paymentMethods.map(p => `<option value="${p.id}" data-icon="${escAttr(p.icon || '')}" data-icon-type="${escAttr(p.icon_type || 'emoji')}" data-label="${escAttr(p.name || 'Payment Method')}">${iconText(p, '💳')} ${escHtml(p.name || 'Payment Method')}</option>`).join('');
         }
+    }
+
+    function escHtml(s) {
+        const d = document.createElement('div');
+        d.textContent = s == null ? '' : String(s);
+        return d.innerHTML;
+    }
+
+    function escAttr(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
     }
 
     /* ── Sidebar (Mobile) ────────────────────────────────────────────── */

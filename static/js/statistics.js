@@ -169,7 +169,12 @@ ET.Statistics = (function () {
         _charts.category = new Chart(canvas, {
             type: 'doughnut',
             data: {
-                labels: categories.map(c => `${c.icon || ''} ${c.name || 'Other'}`),
+                labels: categories.map(c => {
+                    const labelIcon = (c.icon_type === 'upload' || c.icon_type === 'image' || String(c.icon || '').startsWith('data:image/') || String(c.icon || '').startsWith('http'))
+                        ? '🖼️'
+                        : (c.icon || '📌');
+                    return `${labelIcon} ${c.name || 'Other'}`;
+                }),
                 datasets: [{
                     data: categories.map(c => c.total),
                     backgroundColor: categories.map((c, i) => (c.color || defaultColors[i % defaultColors.length]) + 'cc'),
@@ -224,7 +229,7 @@ ET.Statistics = (function () {
         el.innerHTML = top.map((e, idx) => `
             <div class="flex items-center gap-3 mb-3">
                 <span class="text-xs font-bold text-[var(--text-secondary)] w-5">#${idx + 1}</span>
-                <span class="text-lg">${e.category_icon || '📌'}</span>
+                ${renderIcon(e.category_icon_type, e.category_icon, '📌', 'lg')}
                 <div class="flex-1 min-w-0">
                     <div class="flex justify-between mb-1">
                         <span class="text-sm text-[var(--text-primary)] truncate">${escHtml(e.title)}</span>
@@ -254,7 +259,7 @@ ET.Statistics = (function () {
             const pct = total > 0 ? (p.total / total * 100) : 0;
             return `
             <div class="flex items-center gap-3 mb-3">
-                <span class="text-lg">${p.icon || '💳'}</span>
+                ${renderIcon(p.icon_type, p.icon, '💳', 'lg')}
                 <div class="flex-1">
                     <div class="flex justify-between mb-1">
                         <span class="text-sm text-[var(--text-primary)]">${p.name || 'Unknown'}</span>
@@ -273,6 +278,22 @@ ET.Statistics = (function () {
             try { if (c) c.destroy(); } catch (e) {}
         });
         _charts = {};
+    }
+
+    function inferIconType(iconType, iconValue) {
+        if (iconType) return iconType;
+        const v = String(iconValue || '');
+        if (v.startsWith('data:image/') || v.startsWith('http')) return 'image';
+        return 'emoji';
+    }
+
+    function renderIcon(iconType, iconValue, fallback = '📌', sizeClass = 'sm') {
+        const type = inferIconType(iconType, iconValue);
+        const value = iconValue || fallback;
+        if (ET.IconUpload && ET.IconUpload.renderIcon) {
+            return ET.IconUpload.renderIcon(type, value, sizeClass);
+        }
+        return `<span class="icon-display emoji ${sizeClass}">${value}</span>`;
     }
 
     return { render, destroyCharts };

@@ -131,8 +131,10 @@ def dashboard():
 def get_expenses():
     db = get_db()
     rows = db.execute('''
-        SELECT e.*, c.name as category_name, c.icon as category_icon, c.color as category_color,
-               p.name as payment_method_name, p.icon as payment_method_icon
+        SELECT e.*, c.name as category_name, c.icon as category_icon,
+               c.icon_type as category_icon_type, c.color as category_color,
+               p.name as payment_method_name, p.icon as payment_method_icon,
+               p.icon_type as payment_method_icon_type
         FROM expenses e
         LEFT JOIN categories c ON e.category_id = c.id
         LEFT JOIN payment_methods p ON e.payment_method_id = p.id
@@ -378,7 +380,7 @@ def get_stats_summary():
 
     # Category breakdown for current month
     categories = db.execute('''
-        SELECT c.name, c.icon, c.color, COALESCE(SUM(e.amount),0) as total
+        SELECT c.name, c.icon, c.icon_type, c.color, COALESCE(SUM(e.amount),0) as total
         FROM expenses e LEFT JOIN categories c ON e.category_id=c.id
         WHERE e.user_id=? AND e.billing_date >= ? AND e.billing_date < ?
         GROUP BY e.category_id ORDER BY total DESC
@@ -401,7 +403,8 @@ def get_stats_summary():
 
     # Top expenses this month
     top_expenses = db.execute('''
-        SELECT e.title, e.amount, e.currency, c.icon as category_icon, c.color as category_color
+        SELECT e.title, e.amount, e.currency, c.icon as category_icon,
+               c.icon_type as category_icon_type, c.color as category_color
         FROM expenses e LEFT JOIN categories c ON e.category_id=c.id
         WHERE e.user_id=? AND e.billing_date >= ? AND e.billing_date < ?
         ORDER BY e.amount DESC LIMIT 5
@@ -409,7 +412,7 @@ def get_stats_summary():
 
     # Payment method breakdown
     payment_breakdown = db.execute('''
-        SELECT p.name, p.icon, COALESCE(SUM(e.amount),0) as total
+        SELECT p.name, p.icon, p.icon_type, COALESCE(SUM(e.amount),0) as total
         FROM expenses e LEFT JOIN payment_methods p ON e.payment_method_id=p.id
         WHERE e.user_id=? AND e.billing_date >= ? AND e.billing_date < ?
         GROUP BY e.payment_method_id ORDER BY total DESC
@@ -439,8 +442,10 @@ def get_calendar_data():
     uid = session['user_id']
 
     expenses = db.execute('''
-        SELECT e.*, c.name as category_name, c.icon as category_icon, c.color as category_color,
-               p.name as payment_method_name, p.icon as payment_method_icon
+        SELECT e.*, c.name as category_name, c.icon as category_icon,
+               c.icon_type as category_icon_type, c.color as category_color,
+               p.name as payment_method_name, p.icon as payment_method_icon,
+               p.icon_type as payment_method_icon_type
         FROM expenses e
         LEFT JOIN categories c ON e.category_id = c.id
         LEFT JOIN payment_methods p ON e.payment_method_id = p.id
@@ -562,8 +567,12 @@ def get_calendar_data():
                 cal_data[date_str].append({
                     'id': e['id'], 'title': e['title'], 'amount': e['amount'],
                     'currency': e['currency'], 'category_name': e['category_name'],
-                    'category_icon': e['category_icon'], 'category_color': e['category_color'],
+                    'category_icon': e['category_icon'],
+                    'category_icon_type': e['category_icon_type'],
+                    'category_color': e['category_color'],
                     'payment_method_name': e['payment_method_name'],
+                    'payment_method_icon': e['payment_method_icon'],
+                    'payment_method_icon_type': e['payment_method_icon_type'],
                     'billing_interval': e['billing_interval'],
                 })
 

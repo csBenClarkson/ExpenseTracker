@@ -41,13 +41,24 @@ ET.IconUpload = (function () {
      */
     function renderIcon(iconType, iconValue, sizeClass = '') {
         sizeClass = sizeClass || '';
-        
-        if (iconType === 'emoji') {
-            return `<span class="icon-display emoji ${sizeClass}">${iconValue || '📌'}</span>`;
-        } else if (iconType === 'image' || iconType === 'upload') {
-            return `<div class="icon-display image ${sizeClass}" style="background-image:url('${iconValue}')"></div>`;
+        const value = iconValue || '';
+        const inferredType = iconType || (typeof value === 'string' && (value.startsWith('data:image/') || value.startsWith('http'))
+            ? 'image'
+            : 'emoji');
+
+        if (inferredType === 'emoji') {
+            return `<span class="icon-display emoji ${sizeClass}">${value || '📌'}</span>`;
         }
-        
+        if (inferredType === 'image' || inferredType === 'upload') {
+            const safeValue = String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+            return `<span class="icon-display image ${sizeClass}" style="background-image:url(&quot;${safeValue}&quot;)"></span>`;
+        }
+
         return `<span class="icon-display emoji ${sizeClass}">📌</span>`;
     }
 
